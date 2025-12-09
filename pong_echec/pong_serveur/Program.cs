@@ -11,8 +11,8 @@ namespace PongServeur
         private static object lockClients = new object();
         
         // État de la balle (autorité du serveur)
-        private static int ballPosX = 400;
-        private static int ballPosY = 300;
+        private static int ballPosX = 200;
+        private static int ballPosY = 150;
         private static int ballSpeedX = 5;
         private static int ballSpeedY = 5;
         private static int ballRadius = 10;

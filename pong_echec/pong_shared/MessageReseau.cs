@@ -6,7 +6,9 @@ namespace pong_shared
     // Types de messages
     public enum TypeMessage
     {
-        UpdateBall,      // Mise à jour position balle
+        UpdateBall, 
+        UpdateRaquette, 
+        AssignerJoueurRaquette, 
         ConnexionClient,
         DeconnexionClient
     }
@@ -16,7 +18,7 @@ namespace pong_shared
     {
         public TypeMessage Type { get; set; }
         public string Data { get; set; } = string.Empty;
-
+        
         public static MessageReseau CreerUpdateBall(int posX, int posY, int speedX, int speedY)
         {
             var ballData = new BallData 
@@ -53,7 +55,4 @@ namespace pong_shared
             return JsonSerializer.Deserialize<MessageReseau>(json);
         }
     }
-
-    // Structure pour les données de la balle
-
 }

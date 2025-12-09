@@ -11,10 +11,10 @@ namespace pong_echec.Reseau
         private NetworkStream? stream;
         private StreamReader? reader;
         public bool EstConnecte => client?.Connected ?? false;
-
+        
         // Événement déclenché quand la balle est mise à jour
         public event Action<BallData>? OnBallUpdate;
-
+        
         public async Task<bool> ConnecterAsync(string adresseServeur, int port)
         {
             try

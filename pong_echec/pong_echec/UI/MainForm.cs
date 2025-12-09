@@ -1,7 +1,7 @@
 using pong_echec.Game;
 using pong_echec.Reseau;
-using pong_shared;
 using pong_shared.Models;
+using pong_echec.Input;
 
 namespace pong_echec.UI
 {
@@ -11,7 +11,7 @@ namespace pong_echec.UI
         Ball ball;
         System.Windows.Forms.Timer gameLoop;
         Raquette raquetteJouerUn;
-        
+
         // Client réseau
         ClientReseau clientReseau;
         bool modeReseau = false;
@@ -25,8 +25,6 @@ namespace pong_echec.UI
             ball = new Ball(400, 300);
 
             raquetteJouerUn = new Raquette(50, 200);
-            raquetteJouerUn.VitesseX = 5;
-            raquetteJouerUn.Move(1, 0);
 
             // Initialiser le client réseau
             clientReseau = new ClientReseau();
@@ -36,9 +34,21 @@ namespace pong_echec.UI
             DemanderModeReseau();
 
             gameLoop = new System.Windows.Forms.Timer();
-            gameLoop.Interval = 10; 
+            gameLoop.Interval = 10;
             gameLoop.Tick += GameLoop_Tick;
             gameLoop.Start();
+        }
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+            InputManager.Instance.OnKeyDown(e.KeyCode);
+        }
+
+        protected override void OnKeyUp(KeyEventArgs e)
+        {
+            base.OnKeyUp(e);
+            InputManager.Instance.OnKeyUp(e.KeyCode);
         }
 
         private async void DemanderModeReseau()
@@ -80,13 +90,13 @@ namespace pong_echec.UI
                 Text = "Adresse du serveur",
                 StartPosition = FormStartPosition.CenterScreen
             };
-            
+
             Label textLabel = new Label() { Left = 20, Top = 20, Text = "Adresse IP du serveur:", Width = 350 };
             TextBox textBox = new TextBox() { Left = 20, Top = 50, Width = 350, Text = "127.0.0.1" };
             Button confirmation = new Button() { Text = "OK", Left = 250, Width = 100, Top = 80, DialogResult = DialogResult.OK };
-            
+
             confirmation.Click += (sender, e) => { prompt.Close(); };
-            
+
             prompt.Controls.Add(textLabel);
             prompt.Controls.Add(textBox);
             prompt.Controls.Add(confirmation);
@@ -94,7 +104,7 @@ namespace pong_echec.UI
 
             return prompt.ShowDialog() == DialogResult.OK ? textBox.Text : string.Empty;
         }
-
+        
         private void ClientReseau_OnBallUpdate(BallData ballData)
         {
             // Mettre à jour la balle avec les données du serveur
@@ -112,14 +122,33 @@ namespace pong_echec.UI
             ball.SpeedX = ballData.SpeedX;
             ball.SpeedY = ballData.SpeedY;
         }
-        
+
         private void GameLoop_Tick(object? sender, EventArgs e)
         {
             // En mode réseau, ne pas mettre à jour la balle localement
             // Le serveur envoie les mises à jour
-            if (!modeReseau)
+            InputManager.Instance.Update();
+            
+            if (InputManager.Instance.EstPresse(Keys.Up))
             {
-                ball.Update(terrain);
+                raquetteJouerUn.PosY -= 5;
+            }
+            if (InputManager.Instance.EstPresse(Keys.Down))
+            {
+                raquetteJouerUn.PosY += 5;
+            }
+            if (InputManager.Instance.EstPresse(Keys.Left))
+            {
+                raquetteJouerUn.PosX -= 5;
+            }
+            if (InputManager.Instance.EstPresse(Keys.Right))
+            {
+                raquetteJouerUn.PosX += 5;
+            }
+            
+            if (InputManager.Instance.EstPresseCetteFrame(Keys.Space))
+            {
+                Console.WriteLine("Espace pressée");    
             }
 
             raquetteJouerUn.UpdatePosition(terrain);
@@ -130,7 +159,7 @@ namespace pong_echec.UI
         {
             base.OnPaint(e);
             e.Graphics.FillRectangle(Brushes.Black, 0, 0, terrain.Width, terrain.Height);
-            
+
             ball.Draw(e.Graphics);
             raquetteJouerUn.Draw(e.Graphics);
         }
