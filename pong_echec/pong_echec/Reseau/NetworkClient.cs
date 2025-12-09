@@ -11,10 +11,13 @@ namespace pong_echec.Reseau
         private NetworkStream? stream;
         private StreamReader? reader;
         public bool EstConnecte => client?.Connected ?? false;
-        
-        // Événement déclenché quand la balle est mise à jour
+        public int MonJoueurId { get; private set; } = -1;
+
+        // Événements
         public event Action<BallData>? OnBallUpdate;
-        
+        public event Action<RaquetteData>? OnRaquetteUpdate;
+        public event Action<int>? OnJoueurAssigne;
+
         public async Task<bool> ConnecterAsync(string adresseServeur, int port)
         {
             try
@@ -71,6 +74,19 @@ namespace pong_echec.Reseau
                     {
                         OnBallUpdate?.Invoke(ballData);
                     }
+                    break;
+                case TypeMessage.UpdateRaquette:
+                    var raquetteData = message.ExtraireDataRaquette();
+                    if (raquetteData != null)
+                    {
+                        OnRaquetteUpdate?.Invoke(raquetteData);
+                    }
+                    break;
+
+                case TypeMessage.AssignerJoueurRaquette:
+                    MonJoueurId = message.ExtraireJoueurId();
+                    Console.WriteLine($"Je suis le joueur {MonJoueurId}");
+                    OnJoueurAssigne?.Invoke(MonJoueurId);
                     break;
             }
         }

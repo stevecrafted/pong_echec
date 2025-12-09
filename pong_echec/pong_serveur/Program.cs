@@ -2,17 +2,19 @@
 using System.Net.Sockets;
 using System.Text;
 using pong_shared;
+using pong_serveur.Models;
 
 namespace PongServeur
 {
     class Program
     {
-        private static List<TcpClient> clients = new List<TcpClient>();
+        private static List<ClientInfo> clients = new List<ClientInfo>();
         private static object lockClients = new object();
+        private static int prochainJoueurId = 1;
         
         // État de la balle (autorité du serveur)
-        private static int ballPosX = 200;
-        private static int ballPosY = 150;
+        private static int ballPosX = 400;
+        private static int ballPosY = 300;
         private static int ballSpeedX = 5;
         private static int ballSpeedY = 5;
         private static int ballRadius = 10;
@@ -37,15 +39,27 @@ namespace PongServeur
             while (true)
             {
                 TcpClient client = await serveur.AcceptTcpClientAsync();
-                Console.WriteLine($"Nouveau client connecté: {client.Client.RemoteEndPoint}");
                 
+                int joueurId;
                 lock (lockClients)
                 {
-                    clients.Add(client);
+                    // Assigner un ID de joueur (1 ou 2)
+                    joueurId = prochainJoueurId;
+                    prochainJoueurId++;
+                    if (prochainJoueurId > 2) prochainJoueurId = 1; // Limite à 2 joueurs
+                    
+                    ClientInfo clientInfo = new ClientInfo(client, joueurId);
+                    clients.Add(clientInfo);
+                    
+                    Console.WriteLine($"Nouveau client connecté: {client.Client.RemoteEndPoint} - Joueur {joueurId}");
                 }
 
+                // Envoyer l'ID du joueur au client
+                var msgAssignation = MessageReseau.CreerAssignerJoueur(joueurId);
+                await EnvoyerAUnClient(client, msgAssignation);
+
                 // Gérer le client dans un thread séparé
-                _ = Task.Run(() => GererClient(client));
+                _ = Task.Run(() => GererClient(client, joueurId));
             }
         }
 
@@ -78,69 +92,117 @@ namespace PongServeur
         // Envoyer un message à tous les clients connectés
         static async Task EnvoyerATousLesClients(MessageReseau message)
         {
-            string json = message.Serialiser() + "\n"; // Délimiteur de ligne
+            string json = message.Serialiser() + "\n";
             byte[] data = Encoding.UTF8.GetBytes(json);
 
-            List<TcpClient> clientsASupprimer = new List<TcpClient>();
+            List<ClientInfo> clientsASupprimer = new List<ClientInfo>();
 
             lock (lockClients)
             {
-                foreach (var client in clients)
+                foreach (var clientInfo in clients)
                 {
                     try
                     {
-                        if (client.Connected)
+                        if (clientInfo.Client.Connected)
                         {
-                            client.GetStream().WriteAsync(data, 0, data.Length);
+                            clientInfo.Client.GetStream().WriteAsync(data, 0, data.Length);
                         }
                         else
                         {
-                            clientsASupprimer.Add(client);
+                            clientsASupprimer.Add(clientInfo);
                         }
                     }
                     catch
                     {
-                        clientsASupprimer.Add(client);
+                        clientsASupprimer.Add(clientInfo);
                     }
                 }
 
                 // Supprimer les clients déconnectés
-                foreach (var client in clientsASupprimer)
+                foreach (var clientInfo in clientsASupprimer)
                 {
-                    clients.Remove(client);
-                    Console.WriteLine("Client déconnecté");
+                    clients.Remove(clientInfo);
+                    Console.WriteLine($"Joueur {clientInfo.JoueurId} déconnecté");
                 }
             }
         }
 
+        // Envoyer un message à un client spécifique
+        static async Task EnvoyerAUnClient(TcpClient client, MessageReseau message)
+        {
+            try
+            {
+                string json = message.Serialiser() + "\n";
+                byte[] data = Encoding.UTF8.GetBytes(json);
+                await client.GetStream().WriteAsync(data, 0, data.Length);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur envoi: {ex.Message}");
+            }
+        }
+
         // Gérer un client individuel
-        static async Task GererClient(TcpClient client)
+        static async Task GererClient(TcpClient client, int joueurId)
         {
             NetworkStream stream = client.GetStream();
-            byte[] buffer = new byte[1024];
+            StreamReader reader = new StreamReader(stream, Encoding.UTF8);
 
             try
             {
                 while (client.Connected)
                 {
-                    int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
-                    if (bytesRead == 0) break;
+                    string? ligne = await reader.ReadLineAsync();
+                    if (ligne == null) break;
 
-                    string message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                    Console.WriteLine($"Reçu: {message}");
+                    var message = MessageReseau.Deserialiser(ligne);
+                    if (message != null)
+                    {
+                        await TraiterMessage(message, joueurId);
+                    }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Erreur client: {ex.Message}");
+                Console.WriteLine($"Erreur client {joueurId}: {ex.Message}");
             }
             finally
             {
                 lock (lockClients)
                 {
-                    clients.Remove(client);
+                    clients.RemoveAll(c => c.JoueurId == joueurId);
                 }
                 client.Close();
+                Console.WriteLine($"Joueur {joueurId} déconnecté");
+            }
+        }
+
+        // Traiter les messages reçus des clients
+        static async Task TraiterMessage(MessageReseau message, int joueurId)
+        {
+            switch (message.Type)
+            {
+                case TypeMessage.UpdateRaquette:
+                    var raquetteData = message.ExtraireDataRaquette();
+                    if (raquetteData != null)
+                    {
+                        // Mettre à jour la position de la raquette du joueur
+                        lock (lockClients)
+                        {
+                            var clientInfo = clients.FirstOrDefault(c => c.JoueurId == joueurId);
+                            if (clientInfo != null)
+                            {
+                                clientInfo.RaquettePosX = raquetteData.PosX;
+                                clientInfo.RaquettePosY = raquetteData.PosY;
+                                
+                                // Console.WriteLine($"Joueur {joueurId} - Raquette: ({raquetteData.PosX:F1}, {raquetteData.PosY:F1})");
+                            }
+                        }
+                        
+                        // Redistribuer à tous les clients
+                        await EnvoyerATousLesClients(message);
+                    }
+                    break;
             }
         }
     }

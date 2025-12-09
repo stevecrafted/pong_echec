@@ -6,9 +6,9 @@ namespace pong_shared
     // Types de messages
     public enum TypeMessage
     {
-        UpdateBall, 
-        UpdateRaquette, 
-        AssignerJoueurRaquette, 
+        UpdateBall,
+        UpdateRaquette,
+        AssignerJoueurRaquette,
         ConnexionClient,
         DeconnexionClient
     }
@@ -18,21 +18,46 @@ namespace pong_shared
     {
         public TypeMessage Type { get; set; }
         public string Data { get; set; } = string.Empty;
-        
+
         public static MessageReseau CreerUpdateBall(int posX, int posY, int speedX, int speedY)
         {
-            var ballData = new BallData 
-            { 
-                PosX = posX, 
+            var ballData = new BallData
+            {
+                PosX = posX,
                 PosY = posY,
                 SpeedX = speedX,
                 SpeedY = speedY
             };
-            
+
             return new MessageReseau
             {
                 Type = TypeMessage.UpdateBall,
                 Data = JsonSerializer.Serialize(ballData)
+            };
+        }
+
+        public static MessageReseau CreerUpdateRaquette(int joueurId, float posX, float posY)
+        {
+            var raquetteData = new RaquetteData
+            {
+                JoueurId = joueurId,
+                PosX = posX,
+                PosY = posY
+            };
+
+            return new MessageReseau
+            {
+                Type = TypeMessage.UpdateRaquette,
+                Data = JsonSerializer.Serialize(raquetteData)
+            };
+        }
+
+        public static MessageReseau CreerAssignerJoueur(int joueurId)
+        {
+            return new MessageReseau
+            {
+                Type = TypeMessage.AssignerJoueurRaquette,
+                Data = joueurId.ToString()
             };
         }
 
@@ -43,6 +68,24 @@ namespace pong_shared
                 return JsonSerializer.Deserialize<BallData>(Data);
             }
             return null;
+        }
+        
+        public RaquetteData? ExtraireDataRaquette()
+        {
+            if (Type == TypeMessage.UpdateRaquette)
+            {
+                return JsonSerializer.Deserialize<RaquetteData>(Data);
+            }
+            return null;
+        }
+
+        public int ExtraireJoueurId()
+        {
+            if (Type == TypeMessage.AssignerJoueurRaquette)
+            {
+                return int.Parse(Data);
+            }
+            return -1;
         }
 
         public string Serialiser()

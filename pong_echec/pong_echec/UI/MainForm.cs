@@ -1,7 +1,8 @@
 using pong_echec.Game;
-using pong_echec.Reseau;
-using pong_shared.Models;
 using pong_echec.Input;
+using pong_echec.Reseau;
+using pong_shared;
+using pong_shared.Models;
 
 namespace pong_echec.UI
 {
@@ -10,45 +11,89 @@ namespace pong_echec.UI
         Terrain terrain;
         Ball ball;
         System.Windows.Forms.Timer gameLoop;
-        Raquette raquetteJouerUn;
-
+        
+        // Raquettes
+        Raquette raquetteJoueur1;  // Toujours à gauche
+        Raquette raquetteJoueur2;  // Toujours à droite
+        
         // Client réseau
         ClientReseau clientReseau;
         bool modeReseau = false;
+        int monJoueurId = -1;
+        
+        // Pour limiter l'envoi réseau
+        private DateTime dernierEnvoi = DateTime.Now;
+        private const int INTERVALLE_ENVOI_MS = 16; // ~60 envois/seconde
 
         public MainForm()
         {
             InitializeComponent();
             this.DoubleBuffered = true;
+            this.KeyPreview = true;
 
             terrain = new Terrain(1600, 900);
             ball = new Ball(400, 300);
 
-            raquetteJouerUn = new Raquette(50, 200);
+            // Créer les deux raquettes
+            raquetteJoueur1 = new Raquette(50, 400);
+            raquetteJoueur1.Couleur = Brushes.Blue;
+            
+            raquetteJoueur2 = new Raquette(1500, 400);
+            raquetteJoueur2.Couleur = Brushes.Red;
 
             // Initialiser le client réseau
             clientReseau = new ClientReseau();
             clientReseau.OnBallUpdate += ClientReseau_OnBallUpdate;
+            clientReseau.OnRaquetteUpdate += ClientReseau_OnRaquetteUpdate;
+            clientReseau.OnJoueurAssigne += ClientReseau_OnJoueurAssigne;
 
             // Demander si mode réseau
-            DemanderModeReseau();
+            DemanderModeReseau(); 
 
             gameLoop = new System.Windows.Forms.Timer();
-            gameLoop.Interval = 10;
+            gameLoop.Interval = 10; 
             gameLoop.Tick += GameLoop_Tick;
             gameLoop.Start();
         }
 
-        protected override void OnKeyDown(KeyEventArgs e)
+        private void ClientReseau_OnJoueurAssigne(int joueurId)
         {
-            base.OnKeyDown(e);
-            InputManager.Instance.OnKeyDown(e.KeyCode);
+            // Cette méthode est appelée depuis un thread réseau
+            if (InvokeRequired)
+            {
+                Invoke(new Action(() => ClientReseau_OnJoueurAssigne(joueurId)));
+                return;
+            }
+
+            monJoueurId = joueurId;
+            string couleur = joueurId == 1 ? "BLEUE (gauche)" : "ROUGE (droite)";
+            MessageBox.Show($"Vous êtes le Joueur {joueurId}\nVous contrôlez la raquette {couleur}", 
+                "Assignation", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
-        protected override void OnKeyUp(KeyEventArgs e)
+        private void ClientReseau_OnRaquetteUpdate(RaquetteData raquetteData)
         {
-            base.OnKeyUp(e);
-            InputManager.Instance.OnKeyUp(e.KeyCode);
+            if (InvokeRequired)
+            {
+                Invoke(new Action(() => ClientReseau_OnRaquetteUpdate(raquetteData)));
+                return;
+            }
+
+            // Ne pas mettre à jour MA propre raquette (éviter les conflits)
+            if (raquetteData.JoueurId == monJoueurId)
+                return;
+
+            // Mettre à jour la raquette de l'adversaire
+            if (raquetteData.JoueurId == 1)
+            {
+                raquetteJoueur1.PosX = raquetteData.PosX;
+                raquetteJoueur1.PosY = raquetteData.PosY;
+            }
+            else if (raquetteData.JoueurId == 2)
+            {
+                raquetteJoueur2.PosX = raquetteData.PosX;
+                raquetteJoueur2.PosY = raquetteData.PosY;
+            }
         }
 
         private async void DemanderModeReseau()
@@ -62,7 +107,6 @@ namespace pong_echec.UI
 
             if (result == DialogResult.Yes)
             {
-                // Demander l'adresse du serveur
                 string adresse = PromptAdresseServeur();
                 if (!string.IsNullOrEmpty(adresse))
                 {
@@ -90,13 +134,13 @@ namespace pong_echec.UI
                 Text = "Adresse du serveur",
                 StartPosition = FormStartPosition.CenterScreen
             };
-
+            
             Label textLabel = new Label() { Left = 20, Top = 20, Text = "Adresse IP du serveur:", Width = 350 };
             TextBox textBox = new TextBox() { Left = 20, Top = 50, Width = 350, Text = "127.0.0.1" };
             Button confirmation = new Button() { Text = "OK", Left = 250, Width = 100, Top = 80, DialogResult = DialogResult.OK };
-
+            
             confirmation.Click += (sender, e) => { prompt.Close(); };
-
+            
             prompt.Controls.Add(textLabel);
             prompt.Controls.Add(textBox);
             prompt.Controls.Add(confirmation);
@@ -104,64 +148,111 @@ namespace pong_echec.UI
 
             return prompt.ShowDialog() == DialogResult.OK ? textBox.Text : string.Empty;
         }
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+            InputManager.Instance.OnKeyDown(e.KeyCode);
+        }
+
+        protected override void OnKeyUp(KeyEventArgs e)
+        {
+            base.OnKeyUp(e);
+            InputManager.Instance.OnKeyUp(e.KeyCode);
+        }
         
         private void ClientReseau_OnBallUpdate(BallData ballData)
         {
-            // Mettre à jour la balle avec les données du serveur
-            // Cette méthode sera appelée depuis un thread réseau, donc utiliser Invoke
             if (InvokeRequired)
             {
                 Invoke(new Action(() => ClientReseau_OnBallUpdate(ballData)));
                 return;
             }
 
-            // Mettre à jour directement les propriétés privées via réflexion
-            // ou modifier la classe Ball pour avoir des setters publics
             typeof(Ball).GetProperty("PosX")?.SetValue(ball, ballData.PosX);
             typeof(Ball).GetProperty("PosY")?.SetValue(ball, ballData.PosY);
             ball.SpeedX = ballData.SpeedX;
             ball.SpeedY = ballData.SpeedY;
         }
 
-        private void GameLoop_Tick(object? sender, EventArgs e)
+        private async void GameLoop_Tick(object? sender, EventArgs e)
         {
-            // En mode réseau, ne pas mettre à jour la balle localement
-            // Le serveur envoie les mises à jour
             InputManager.Instance.Update();
-            
-            if (InputManager.Instance.EstPresse(Keys.Up))
-            {
-                raquetteJouerUn.PosY -= 5;
-            }
-            if (InputManager.Instance.EstPresse(Keys.Down))
-            {
-                raquetteJouerUn.PosY += 5;
-            }
-            if (InputManager.Instance.EstPresse(Keys.Left))
-            {
-                raquetteJouerUn.PosX -= 5;
-            }
-            if (InputManager.Instance.EstPresse(Keys.Right))
-            {
-                raquetteJouerUn.PosX += 5;
-            }
-            
-            if (InputManager.Instance.EstPresseCetteFrame(Keys.Space))
-            {
-                Console.WriteLine("Espace pressée");    
-            }
 
-            raquetteJouerUn.UpdatePosition(terrain);
+            // Mise à jour de la balle (seulement en mode local)
+            // if (!modeReseau)
+            // {
+            //     ball.Update(terrain);
+            // }
+
+            // Contrôler MA raquette
+            if (modeReseau && monJoueurId != -1)
+            {
+                Raquette maRaquette = monJoueurId == 1 ? raquetteJoueur1 : raquetteJoueur2;
+                
+                float ancienneX = maRaquette.PosX;
+                float ancienneY = maRaquette.PosY;
+                
+                // Déplacer la raquette avec les touches
+                float RaquetteVitesse = 7f;
+                if (InputManager.Instance.EstPresse(Keys.Up))
+                    maRaquette.PosY -= RaquetteVitesse;
+                if (InputManager.Instance.EstPresse(Keys.Down))
+                    maRaquette.PosY += RaquetteVitesse;
+                if (InputManager.Instance.EstPresse(Keys.Left))
+                    maRaquette.PosX -= RaquetteVitesse;
+                if (InputManager.Instance.EstPresse(Keys.Right))
+                    maRaquette.PosX += RaquetteVitesse;
+
+                // Limiter dans les bords
+                maRaquette.PosX = Math.Clamp(maRaquette.PosX, 0, terrain.Width - maRaquette.Width);
+                maRaquette.PosY = Math.Clamp(maRaquette.PosY, 0, terrain.Height - maRaquette.Height);
+
+                // Envoyer la position au serveur si elle a changé
+                if ((maRaquette.PosX != ancienneX || maRaquette.PosY != ancienneY) && 
+                    (DateTime.Now - dernierEnvoi).TotalMilliseconds >= INTERVALLE_ENVOI_MS)
+                {
+                    var message = MessageReseau.CreerUpdateRaquette(monJoueurId, maRaquette.PosX, maRaquette.PosY);
+                    await clientReseau.EnvoyerMessageAsync(message);
+                    dernierEnvoi = DateTime.Now;
+                }
+            }
+            // else if (!modeReseau)
+            // {
+            //     // Mode local : contrôler la raquette 1 simplement
+            //     float vitesse = 7f;
+            //     if (InputManager.Instance.EstPresse(Keys.Up))
+            //         raquetteJoueur1.PosY -= vitesse;
+            //     if (InputManager.Instance.EstPresse(Keys.Down))
+            //         raquetteJoueur1.PosY += vitesse;
+                
+            //     raquetteJoueur1.PosY = Math.Clamp(raquetteJoueur1.PosY, 0, terrain.Height - raquetteJoueur1.Height);
+            // }
+
             Invalidate();
         }
 
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
+            
+            // Fond
             e.Graphics.FillRectangle(Brushes.Black, 0, 0, terrain.Width, terrain.Height);
-
+            
+            // Dessiner balle
             ball.Draw(e.Graphics);
-            raquetteJouerUn.Draw(e.Graphics);
+            
+            // Dessiner les raquettes
+            raquetteJoueur1.Draw(e.Graphics);
+            raquetteJoueur2.Draw(e.Graphics);
+
+            // Afficher des infos de debug
+            if (modeReseau)
+            {
+                string debug = $"Joueur {monJoueurId} | ";
+                debug += monJoueurId == 1 ? "Raquette BLEUE" : "Raquette ROUGE";
+                e.Graphics.DrawString(debug, new Font("Arial", 14, FontStyle.Bold), Brushes.White, 10, 10);
+            }
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
