@@ -25,7 +25,7 @@ namespace PongServeur
         private static int framesSansCollision = 0;
         private const int FRAMES_COOLDOWN = 10; // Délai anti-rebond multiple
         
-        private const int TERRAIN_WIDTH = 1600;
+        private const int TERRAIN_WIDTH = 900;
         private const int TERRAIN_HEIGHT = 900;
 
         static async Task Main(string[] args)
@@ -129,7 +129,6 @@ namespace PongServeur
                     {
                         // IMPORTANT : Vérifier la DIRECTION de la balle
                         // La balle doit venir de la bonne direction pour rebondir
-                        
                         bool balleVientDuHaut = anciennePosY < raqY;
                         bool balleVientDuBas = anciennePosY > raqY + RAQUETTE_HEIGHT;
                         

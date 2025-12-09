@@ -11,16 +11,19 @@ namespace pong_echec.UI
         Terrain terrain;
         Ball ball;
         System.Windows.Forms.Timer gameLoop;
-
+        
         // Raquettes
         Raquette raquetteJoueur1;  // Toujours à gauche
         Raquette raquetteJoueur2;  // Toujours à droite
-
+        
+        // Pièces d'échecs
+        GestionnairePieces gestionnairePieces;
+        
         // Client réseau
         ClientReseau clientReseau;
         bool modeReseau = false;
         int monJoueurId = -1;
-
+        
         // Pour limiter l'envoi réseau
         private DateTime dernierEnvoi = DateTime.Now;
         private const int INTERVALLE_ENVOI_MS = 16; // ~60 envois/seconde
@@ -31,14 +34,19 @@ namespace pong_echec.UI
             this.DoubleBuffered = true;
             this.KeyPreview = true;
 
-            terrain = new Terrain(1600, 900);
+            terrain = new Terrain(900, 900);
             ball = new Ball(400, 300);
 
             // Créer les deux raquettes
-            raquetteJoueur1 = new Raquette(750, 50);
+            raquetteJoueur1 = new Raquette(50, 400);
             raquetteJoueur1.Couleur = Brushes.Blue;
-            raquetteJoueur2 = new Raquette(750, 850);
+            
+            raquetteJoueur2 = new Raquette(1500, 400);
             raquetteJoueur2.Couleur = Brushes.Red;
+
+            // Initialiser le gestionnaire de pièces
+            gestionnairePieces = new GestionnairePieces(terrain);
+            gestionnairePieces.InitialiserPieces();
 
             // Initialiser le client réseau
             clientReseau = new ClientReseau();
@@ -50,7 +58,7 @@ namespace pong_echec.UI
             DemanderModeReseau();
 
             gameLoop = new System.Windows.Forms.Timer();
-            gameLoop.Interval = 10;
+            gameLoop.Interval = 10; 
             gameLoop.Tick += GameLoop_Tick;
             gameLoop.Start();
         }
@@ -66,7 +74,7 @@ namespace pong_echec.UI
 
             monJoueurId = joueurId;
             string couleur = joueurId == 1 ? "BLEUE (gauche)" : "ROUGE (droite)";
-            MessageBox.Show($"Vous êtes le Joueur {joueurId}\nVous contrôlez la raquette {couleur}",
+            MessageBox.Show($"Vous êtes le Joueur {joueurId}\nVous contrôlez la raquette {couleur}", 
                 "Assignation", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
@@ -133,13 +141,13 @@ namespace pong_echec.UI
                 Text = "Adresse du serveur",
                 StartPosition = FormStartPosition.CenterScreen
             };
-
+            
             Label textLabel = new Label() { Left = 20, Top = 20, Text = "Adresse IP du serveur:", Width = 350 };
             TextBox textBox = new TextBox() { Left = 20, Top = 50, Width = 350, Text = "127.0.0.1" };
             Button confirmation = new Button() { Text = "OK", Left = 250, Width = 100, Top = 80, DialogResult = DialogResult.OK };
-
+            
             confirmation.Click += (sender, e) => { prompt.Close(); };
-
+            
             prompt.Controls.Add(textLabel);
             prompt.Controls.Add(textBox);
             prompt.Controls.Add(confirmation);
@@ -179,38 +187,36 @@ namespace pong_echec.UI
             InputManager.Instance.Update();
 
             // Mise à jour de la balle (seulement en mode local)
-            // if (!modeReseau)
-            // {
-            //     ball.Update(terrain);
-            // }
+            if (!modeReseau)
+            {
+                ball.Update(terrain);
+            }
 
             // Contrôler MA raquette
             if (modeReseau && monJoueurId != -1)
             {
                 Raquette maRaquette = monJoueurId == 1 ? raquetteJoueur1 : raquetteJoueur2;
-
+                
                 float ancienneX = maRaquette.PosX;
                 float ancienneY = maRaquette.PosY;
-
+                
                 // Déplacer la raquette avec les touches
-                float RaquetteVitesse = 7f;
-                /* Ito decommentena si jammais ilaina aminy alea
-                 if (InputManager.Instance.EstPresse(Keys.Up))
-                     maRaquette.PosY -= RaquetteVitesse;
-                 if (InputManager.Instance.EstPresse(Keys.Down))
-                     maRaquette.PosY += RaquetteVitesse;
-                */
+                float vitesse = 7f;
+                if (InputManager.Instance.EstPresse(Keys.Up))
+                    maRaquette.PosY -= vitesse;
+                if (InputManager.Instance.EstPresse(Keys.Down))
+                    maRaquette.PosY += vitesse;
                 if (InputManager.Instance.EstPresse(Keys.Left))
-                    maRaquette.PosX -= RaquetteVitesse;
+                    maRaquette.PosX -= vitesse;
                 if (InputManager.Instance.EstPresse(Keys.Right))
-                    maRaquette.PosX += RaquetteVitesse;
+                    maRaquette.PosX += vitesse;
 
                 // Limiter dans les bords
                 maRaquette.PosX = Math.Clamp(maRaquette.PosX, 0, terrain.Width - maRaquette.Width);
                 maRaquette.PosY = Math.Clamp(maRaquette.PosY, 0, terrain.Height - maRaquette.Height);
 
                 // Envoyer la position au serveur si elle a changé
-                if ((maRaquette.PosX != ancienneX || maRaquette.PosY != ancienneY) &&
+                if ((maRaquette.PosX != ancienneX || maRaquette.PosY != ancienneY) && 
                     (DateTime.Now - dernierEnvoi).TotalMilliseconds >= INTERVALLE_ENVOI_MS)
                 {
                     var message = MessageReseau.CreerUpdateRaquette(monJoueurId, maRaquette.PosX, maRaquette.PosY);
@@ -218,17 +224,17 @@ namespace pong_echec.UI
                     dernierEnvoi = DateTime.Now;
                 }
             }
-            // else if (!modeReseau)
-            // {
-            //     // Mode local : contrôler la raquette 1 simplement
-            //     float vitesse = 7f;
-            //     if (InputManager.Instance.EstPresse(Keys.Up))
-            //         raquetteJoueur1.PosY -= vitesse;
-            //     if (InputManager.Instance.EstPresse(Keys.Down))
-            //         raquetteJoueur1.PosY += vitesse;
-
-            //     raquetteJoueur1.PosY = Math.Clamp(raquetteJoueur1.PosY, 0, terrain.Height - raquetteJoueur1.Height);
-            // }
+            else if (!modeReseau)
+            {
+                // Mode local : contrôler la raquette 1 simplement
+                float vitesse = 7f;
+                if (InputManager.Instance.EstPresse(Keys.Up))
+                    raquetteJoueur1.PosY -= vitesse;
+                if (InputManager.Instance.EstPresse(Keys.Down))
+                    raquetteJoueur1.PosY += vitesse;
+                
+                raquetteJoueur1.PosY = Math.Clamp(raquetteJoueur1.PosY, 0, terrain.Height - raquetteJoueur1.Height);
+            }
 
             Invalidate();
         }
@@ -236,14 +242,17 @@ namespace pong_echec.UI
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
-
+            
             // Fond
             e.Graphics.FillRectangle(Brushes.Black, 0, 0, terrain.Width, terrain.Height);
-
+            
+            // Dessiner les pièces d'échecs (en arrière-plan)
+            gestionnairePieces.Draw(e.Graphics);
+            
             // Dessiner balle
             ball.Draw(e.Graphics);
-
-            // Dessiner les raquettes
+            
+            // Dessiner les raquettes (au premier plan)
             raquetteJoueur1.Draw(e.Graphics);
             raquetteJoueur2.Draw(e.Graphics);
 
@@ -253,6 +262,12 @@ namespace pong_echec.UI
                 string debug = $"Joueur {monJoueurId} | ";
                 debug += monJoueurId == 1 ? "Raquette BLEUE" : "Raquette ROUGE";
                 e.Graphics.DrawString(debug, new Font("Arial", 14, FontStyle.Bold), Brushes.White, 10, 10);
+                
+                // Afficher le nombre de pièces
+                int piecesJ1 = gestionnairePieces.CompterPiecesVivantes(1);
+                int piecesJ2 = gestionnairePieces.CompterPiecesVivantes(2);
+                string infoPieces = $"Pièces J1: {piecesJ1} | Pièces J2: {piecesJ2}";
+                e.Graphics.DrawString(infoPieces, new Font("Arial", 12), Brushes.Yellow, 10, 35);
             }
         }
 
