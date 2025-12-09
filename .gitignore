@@ -1,0 +1,65 @@
+# ============================
+#   Build folders
+# ============================
+bin/
+obj/
+
+# Visual Studio cache files
+.vs/
+*.user
+*.suo
+*.cache/
+*.db
+
+# Auto-generated files
+*.Designer.cs
+*_i.c
+*_p.c
+*.ilk
+*.meta
+*.pch
+*.pdb
+*.pbi
+*.pidb
+*.svclog
+*.vshost.*
+*.dll
+*.exe
+
+# NuGet packages
+packages/
+*.nupkg
+# Si tu utilises restore automatique :
+# !packages/build/
+# !packages/repositories.config
+
+# Logs
+*.log
+
+# Publish outputs
+publish/
+PublishProfiles/
+
+# Resharper / Rider / VS addons
+_ReSharper*/
+*.DotSettings.user
+.idea/
+
+# Temp files
+*.tmp
+*.temp
+*.swp
+*.bak
+
+# .NET Core hidden files
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# User-specific configs
+*.userprefs
+*.ds_store
+
+# Backup files
+*.orig
+*.old
