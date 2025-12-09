@@ -14,7 +14,7 @@ namespace pong_echec.Game
             PosX = x;
             PosY = y;
         }
-        
+
         // Mise à jour position + rebonds
         public void Update(Terrain terrain)
         {
