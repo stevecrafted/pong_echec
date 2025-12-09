@@ -1,31 +1,95 @@
 using System.Net.Sockets;
 using System.Text;
+using pong_shared;
+using pong_shared.Models;
 
 namespace pong_echec.Reseau
 {
-    public class NetworkClient
+    public class ClientReseau
     {
-        TcpClient client;
-        NetworkStream stream;
+        private TcpClient? client;
+        private NetworkStream? stream;
+        private StreamReader? reader;
+        public bool EstConnecte => client?.Connected ?? false;
 
-        public void Connect()
+        // Événement déclenché quand la balle est mise à jour
+        public event Action<BallData>? OnBallUpdate;
+
+        public async Task<bool> ConnecterAsync(string adresseServeur, int port)
         {
-            client = new TcpClient();
-            client.Connect("127.0.0.1", 5000);
-            stream = client.GetStream();
+            try
+            {
+                client = new TcpClient();
+                await client.ConnectAsync(adresseServeur, port);
+                stream = client.GetStream();
+                reader = new StreamReader(stream, Encoding.UTF8);
+
+                Console.WriteLine("Connecté au serveur!");
+                
+                // Démarrer l'écoute des messages
+                _ = Task.Run(EcouterServeur);
+                
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur de connexion: {ex.Message}");
+                return false;
+            }
         }
 
-        public void Send(string msg)
+        private async Task EcouterServeur()
         {
-            byte[] data = Encoding.UTF8.GetBytes(msg);
-            stream.Write(data, 0, data.Length);
+            try
+            {
+                while (EstConnecte && reader != null)
+                {
+                    string? ligne = await reader.ReadLineAsync();
+                    if (ligne == null) break;
+
+                    // Désérialiser le message
+                    var message = MessageReseau.Deserialiser(ligne);
+                    if (message != null)
+                    {
+                        TraiterMessage(message);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur de lecture: {ex.Message}");
+            }
         }
-        
-        public string Receive()
+
+        private void TraiterMessage(MessageReseau message)
         {
-            byte[] buffer = new byte[1024];
-            int len = stream.Read(buffer, 0, buffer.Length);
-            return Encoding.UTF8.GetString(buffer, 0, len);
+            switch (message.Type)
+            {
+                case TypeMessage.UpdateBall:
+                    var ballData = message.ExtraireDataBall();
+                    if (ballData != null)
+                    {
+                        OnBallUpdate?.Invoke(ballData);
+                    }
+                    break;
+            }
+        }
+
+        public async Task EnvoyerMessageAsync(MessageReseau message)
+        {
+            if (stream != null && EstConnecte)
+            {
+                string json = message.Serialiser() + "\n";
+                byte[] data = Encoding.UTF8.GetBytes(json);
+                await stream.WriteAsync(data, 0, data.Length);
+            }
+        }
+
+        public void Deconnecter()
+        {
+            reader?.Close();
+            stream?.Close();
+            client?.Close();
         }
     }
 }

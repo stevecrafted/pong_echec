@@ -1,4 +1,5 @@
 using pong_echec;
+using pong_echec.UI;
 
 namespace pong_echec
 {

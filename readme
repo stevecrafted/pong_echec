@@ -1,15 +1,27 @@
-📁 PongEnReseau (Solution)
+Solution PongEchec
 │
-├── 📁 PongClient (WinForms - votre projet actuel)
-│   ├── Ball.cs
-│   ├── Raquette.cs
-│   ├── Terrain.cs
-│   ├── MainForm.cs (modifié)
-│   └── 📁 Reseau
-│       └── ClientReseau.cs (nouveau)
+├── Shared/                     ← Code partagé entre client et serveur
+│     ├── Models/
+│     │     ├── BallState.cs   ← Position, vitesse envoyées au client
+│     │     └── GameConfig.cs  ← Configuration du terrain & vitesse
+│     ├── Messages/
+│     │     ├── BallUpdateMessage.cs
+│     │     └── PlayerInputMessage.cs (optionnel)
+│     └── Shared.csproj
 │
-├── 📁 PongServeur (Console App)
-│   └── Program.cs
+├── Server/                     ← Le serveur contient toute la logique
+│     ├── Game/
+│     │     ├── Ball.cs        ← La vraie balle (physique)
+│     │     ├── GameLoop.cs    ← Boucle 60 FPS
+│     │     └── GameField.cs   ← Terrain
+│     ├── Network/
+│     │     ├── ServerSocket.cs
+│     └── Server.csproj
 │
-└── 📁 PongCommun (Class Library)
-    └── MessageReseau.cs
+└── Client/                     ← Le client ne fait qu'afficher
+      ├── UI/
+      │     ├── MainForm.cs    ← WinForms
+      │     ├── Renderer.cs    ← Dessine la balle
+      ├── Network/
+      │     ├── ClientSocket.cs
+      └── Client.csproj
