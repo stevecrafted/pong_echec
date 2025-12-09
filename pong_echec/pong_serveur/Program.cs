@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using System.Text;
 using pong_shared;
 using pong_serveur.Models;
+using pong_serveur.Utils;
 
 namespace PongServeur
 {
@@ -18,6 +19,11 @@ namespace PongServeur
         private static int ballSpeedX = 5;
         private static int ballSpeedY = 5;
         private static int ballRadius = 10;
+        
+        // Variables pour éviter les collisions multiples
+        private static int dernierJoueurTouche = 0;
+        private static int framesSansCollision = 0;
+        private const int FRAMES_COOLDOWN = 10; // Délai anti-rebond multiple
         
         private const int TERRAIN_WIDTH = 1600;
         private const int TERRAIN_HEIGHT = 900;
@@ -68,17 +74,27 @@ namespace PongServeur
         {
             while (true)
             {
+                // Sauvegarder l'ancienne position pour détecter la direction
+                int ancienPosX = ballPosX;
+                int ancienPosY = ballPosY;
+
                 // Mise à jour de la balle
                 ballPosX += ballSpeedX;
                 ballPosY += ballSpeedY;
 
-                // Rebonds horizontaux
+                // Rebonds horizontaux (gauche/droite)
                 if (ballPosX - ballRadius <= 0 || ballPosX + ballRadius >= TERRAIN_WIDTH)
                     ballSpeedX = -ballSpeedX;
 
-                // Rebonds verticaux
+                // Rebonds verticaux (haut/bas)
                 if (ballPosY - ballRadius <= 0 || ballPosY + ballRadius >= TERRAIN_HEIGHT)
                     ballSpeedY = -ballSpeedY;
+
+                // Incrémenter le compteur de cooldown
+                framesSansCollision++;
+
+                // Vérifier les collisions avec les raquettes
+                VerifierCollisionsRaquettes(ancienPosY);
 
                 // Envoyer la mise à jour à tous les clients
                 var message = MessageReseau.CreerUpdateBall(ballPosX, ballPosY, ballSpeedX, ballSpeedY);
@@ -195,10 +211,10 @@ namespace PongServeur
                                 clientInfo.RaquettePosX = raquetteData.PosX;
                                 clientInfo.RaquettePosY = raquetteData.PosY;
                                 
-                                // Console.WriteLine($"Joueur {joueurId} - Raquette: ({raquetteData.PosX:F1}, {raquetteData.PosY:F1})");
+                                Console.WriteLine($"Joueur {joueurId} - Raquette: ({raquetteData.PosX:F1}, {raquetteData.PosY:F1})");
                             }
                         }
-                        
+
                         // Redistribuer à tous les clients
                         await EnvoyerATousLesClients(message);
                     }
