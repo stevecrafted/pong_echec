@@ -1,23 +1,15 @@
-Solution: PongReseau
+📁 PongEnReseau (Solution)
 │
-├── PongShared (Class Library)
-│   ├── Messages/
-│   │   ├── MessageBase.cs
-│   │   ├── BallStateMessage.cs
-│   │   └── PlayerInputMessage.cs
-│   └── Models/
-│       └── BallState.cs
+├── 📁 PongClient (WinForms - votre projet actuel)
+│   ├── Ball.cs
+│   ├── Raquette.cs
+│   ├── Terrain.cs
+│   ├── MainForm.cs (modifié)
+│   └── 📁 Reseau
+│       └── ClientReseau.cs (nouveau)
 │
-├── PongServer (Console Application)
-│   ├── Program.cs
-│   ├── GameServer.cs
-│   └── ClientConnection.cs
+├── 📁 PongServeur (Console App)
+│   └── Program.cs
 │
-└── PongClient (Windows Forms Application)
-    ├── Program.cs
-    ├── MainForm.cs
-    ├── NetworkClient.cs
-    └── Game/
-        ├── Terrain.cs
-        ├── Ball.cs
-        └── Raquette.cs
+└── 📁 PongCommun (Class Library)
+    └── MessageReseau.cs

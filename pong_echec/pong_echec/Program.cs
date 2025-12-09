@@ -1,3 +1,5 @@
+using pong_echec.Form;
+
 namespace pong_echec
 {
     internal static class Program
