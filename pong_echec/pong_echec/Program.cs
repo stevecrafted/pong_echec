@@ -1,4 +1,4 @@
-using pong_echec.Form;
+using pong_echec;
 
 namespace pong_echec
 {

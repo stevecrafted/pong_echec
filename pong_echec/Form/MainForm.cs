@@ -1,5 +1,4 @@
 using pong_echec.Game;
-using pong_echec.Reseau;
 
 namespace pong_echec
 {
@@ -8,53 +7,35 @@ namespace pong_echec
         Terrain terrain;
         Ball ball;
         System.Windows.Forms.Timer gameLoop;
-        Raquette raquetteJouerUn;
-        NetworkClient networkClient = new NetworkClient();
 
         public MainForm()
         {
             InitializeComponent();
             this.DoubleBuffered = true;
 
-            terrain = new Terrain(1600, 900);
+            terrain = new Terrain(800, 450); // taille zone
             ball = new Ball(400, 300);
 
-            raquetteJouerUn = new Raquette(50, 200);
-            raquetteJouerUn.VitesseX = 5;
-            raquetteJouerUn.Move(1, 0);
-
             gameLoop = new System.Windows.Forms.Timer();
-            gameLoop.Interval = 10;
+            gameLoop.Interval = 10; // ~60 FPS
             gameLoop.Tick += GameLoop_Tick;
             gameLoop.Start();
         }
 
         private void GameLoop_Tick(object? sender, EventArgs e)
         {
-            // networkClient.Connect();
-            // networkClient.Send("Hello serveur !");
-
-            // string r = networkClient.Receive();
-            // MessageBox.Show("Serveur a répondu : " + r);
-
             ball.Update(terrain);
-
-            raquetteJouerUn.UpdatePosition(terrain);
             Invalidate();
         }
 
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
+            // fond
             e.Graphics.FillRectangle(Brushes.Black, 0, 0, terrain.Width, terrain.Height);
-
+            // dessiner balle
             ball.Draw(e.Graphics);
-            raquetteJouerUn.Draw(e.Graphics);
         }
 
-        protected override void OnFormClosing(FormClosingEventArgs e)
-        {
-            base.OnFormClosing(e);
-        }
     }
 }

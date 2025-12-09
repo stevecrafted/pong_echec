@@ -1,3 +1,5 @@
 <Solution>
   <Project Path="pong_echec/pong_echec.csproj" />
+  <Project Path="pong_serveur/pong_serveur.csproj" Id="08a56019-533e-4f3f-9c97-1f680e99d6a0" />
+  <Project Path="pong_shared/pong_shared.csproj" Id="837e4b48-b440-4dbc-b28c-06c3762db312" />
 </Solution>
