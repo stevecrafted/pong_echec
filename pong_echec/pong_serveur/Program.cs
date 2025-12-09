@@ -105,6 +105,83 @@ namespace PongServeur
             }
         }
 
+        // Vérifier les collisions entre la balle et les raquettes
+        static void VerifierCollisionsRaquettes(int anciennePosY)
+        {
+            // Cooldown : éviter les collisions multiples successives
+            if (framesSansCollision < FRAMES_COOLDOWN)
+                return;
+
+            lock (lockClients)
+            {
+                foreach (var clientInfo in clients)
+                {
+                    // Dimensions de la raquette (correspond à Raquette.cs)
+                    const int RAQUETTE_WIDTH = 100;
+                    const int RAQUETTE_HEIGHT = 10;
+
+                    float raqX = clientInfo.RaquettePosX;
+                    float raqY = clientInfo.RaquettePosY;
+
+                    // Vérifier si la balle touche la raquette
+                    if (Utils.CollisionBallRaquette(ballPosX, ballPosY, ballRadius, 
+                                              raqX, raqY, RAQUETTE_WIDTH, RAQUETTE_HEIGHT))
+                    {
+                        // IMPORTANT : Vérifier la DIRECTION de la balle
+                        // La balle doit venir de la bonne direction pour rebondir
+                        
+                        bool balleVientDuHaut = anciennePosY < raqY;
+                        bool balleVientDuBas = anciennePosY > raqY + RAQUETTE_HEIGHT;
+                        
+                        // Ne rebondir QUE si la balle vient du bon côté
+                        if ((balleVientDuHaut && ballSpeedY > 0) ||  // Vient du haut, va vers le bas
+                            (balleVientDuBas && ballSpeedY < 0))     // Vient du bas, va vers le haut
+                        {
+                            // Inverser la vitesse verticale (rebond)
+                            ballSpeedY = -ballSpeedY;
+
+                            // Repositionner la balle LOIN de la raquette pour éviter qu'elle reste coincée
+                            if (balleVientDuHaut)
+                            {
+                                // La balle venait du haut, la mettre AU-DESSUS de la raquette
+                                ballPosY = (int)(raqY - ballRadius - 2);
+                            }
+                            else
+                            {
+                                // La balle venait du bas, la mettre EN-DESSOUS de la raquette
+                                ballPosY = (int)(raqY + RAQUETTE_HEIGHT + ballRadius + 2);
+                            }
+
+                            // Effet de rebond selon où la balle frappe la raquette
+                            float positionRelative = (ballPosX - raqX) / RAQUETTE_WIDTH; // 0 à 1
+                            float centrage = (positionRelative - 0.5f) * 2; // -1 à 1
+                            
+                            // Modifier légèrement la vitesse horizontale selon l'endroit du contact
+                            ballSpeedX += (int)(centrage * 2);
+                            
+                            // Limiter la vitesse pour éviter qu'elle devienne trop rapide
+                            ballSpeedX = Math.Clamp(ballSpeedX, -10, 10);
+                            ballSpeedY = Math.Clamp(ballSpeedY, -10, 10);
+
+                            // Marquer qu'il y a eu une collision (cooldown)
+                            dernierJoueurTouche = clientInfo.JoueurId;
+                            framesSansCollision = 0;
+
+                            Console.WriteLine($"✓ Collision valide avec raquette du Joueur {clientInfo.JoueurId}!");
+                            
+                            // Une seule collision à la fois
+                            break;
+                        }
+                        else
+                        {
+                            // Collision détectée mais depuis le mauvais côté (balle derrière la raquette)
+                            Console.WriteLine($"✗ Collision ignorée (mauvaise direction) - Joueur {clientInfo.JoueurId}");
+                        }
+                    }
+                }
+            }
+        }
+
         // Envoyer un message à tous les clients connectés
         static async Task EnvoyerATousLesClients(MessageReseau message)
         {
