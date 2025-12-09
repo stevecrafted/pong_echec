@@ -1,0 +1,23 @@
+Solution: PongReseau
+│
+├── PongShared (Class Library)
+│   ├── Messages/
+│   │   ├── MessageBase.cs
+│   │   ├── BallStateMessage.cs
+│   │   └── PlayerInputMessage.cs
+│   └── Models/
+│       └── BallState.cs
+│
+├── PongServer (Console Application)
+│   ├── Program.cs
+│   ├── GameServer.cs
+│   └── ClientConnection.cs
+│
+└── PongClient (Windows Forms Application)
+    ├── Program.cs
+    ├── MainForm.cs
+    ├── NetworkClient.cs
+    └── Game/
+        ├── Terrain.cs
+        ├── Ball.cs
+        └── Raquette.cs
