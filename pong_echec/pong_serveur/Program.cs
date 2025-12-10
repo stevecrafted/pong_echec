@@ -3,35 +3,52 @@ using System.Net.Sockets;
 using System.Text;
 using pong_shared;
 using pong_serveur.Models;
-using pong_serveur.Utils;
 
-namespace PongServeur
+namespace pong_serveur
 {
     class Program
     {
         private static List<ClientInfo> clients = new List<ClientInfo>();
         private static object lockClients = new object();
         private static int prochainJoueurId = 1;
-        
+
         // État de la balle (autorité du serveur)
         private static int ballPosX = 400;
         private static int ballPosY = 300;
         private static int ballSpeedX = 5;
         private static int ballSpeedY = 5;
         private static int ballRadius = 10;
-        
+
         // Variables pour éviter les collisions multiples
         private static int dernierJoueurTouche = 0;
         private static int framesSansCollision = 0;
         private const int FRAMES_COOLDOWN = 10; // Délai anti-rebond multiple
-        
-        private const int TERRAIN_WIDTH = 900;
-        private const int TERRAIN_HEIGHT = 900;
+
+        private static int TERRAIN_WIDTH = 900;
+        private static int TERRAIN_HEIGHT = 900;
+
+        public static void InitialiserJeu(int nbPieces)
+        {
+            ConfigurationJeu configurationJeu = ConfigurationJeu.ObtenirConfiguration(nbPieces);
+
+            // Appliquer la configuration
+            TERRAIN_WIDTH = configurationJeu.TerrainWidth;
+            TERRAIN_HEIGHT = configurationJeu.TerrainHeight;
+            ballPosX = configurationJeu.BallStartX;
+            ballPosY = configurationJeu.BallStartY;
+
+            Console.WriteLine($"Jeu initialisé avec {nbPieces} pièces");
+            Console.WriteLine($"Terrain: {TERRAIN_WIDTH}x{TERRAIN_HEIGHT}");
+            Console.WriteLine($"Balle départ: ({ballPosX}, {ballPosY})");
+        }
 
         static async Task Main(string[] args)
         {
             Console.WriteLine("=== Serveur Pong ===");
             Console.WriteLine("Démarrage du serveur...");
+
+            int nombrePiece = 8;
+            InitialiserJeu(nombrePiece);
 
             // Démarrer le serveur TCP
             TcpListener serveur = new TcpListener(IPAddress.Any, 5000);
@@ -45,7 +62,7 @@ namespace PongServeur
             while (true)
             {
                 TcpClient client = await serveur.AcceptTcpClientAsync();
-                
+
                 int joueurId;
                 lock (lockClients)
                 {
@@ -53,16 +70,18 @@ namespace PongServeur
                     joueurId = prochainJoueurId;
                     prochainJoueurId++;
                     if (prochainJoueurId > 2) prochainJoueurId = 1; // Limite à 2 joueurs
-                    
+
                     ClientInfo clientInfo = new ClientInfo(client, joueurId);
                     clients.Add(clientInfo);
-                    
+
                     Console.WriteLine($"Nouveau client connecté: {client.Client.RemoteEndPoint} - Joueur {joueurId}");
                 }
+
 
                 // Envoyer l'ID du joueur au client
                 var msgAssignation = MessageReseau.CreerAssignerJoueur(joueurId);
                 await EnvoyerAUnClient(client, msgAssignation);
+                Console.WriteLine("Envoi au client de sont assignation reussi");
 
                 // Gérer le client dans un thread séparé
                 _ = Task.Run(() => GererClient(client, joueurId));
@@ -124,14 +143,14 @@ namespace PongServeur
                     float raqY = clientInfo.RaquettePosY;
 
                     // Vérifier si la balle touche la raquette
-                    if (Utils.CollisionBallRaquette(ballPosX, ballPosY, ballRadius, 
+                    if (Utils.Utils.CollisionBallRaquette(ballPosX, ballPosY, ballRadius,
                                               raqX, raqY, RAQUETTE_WIDTH, RAQUETTE_HEIGHT))
                     {
                         // IMPORTANT : Vérifier la DIRECTION de la balle
                         // La balle doit venir de la bonne direction pour rebondir
                         bool balleVientDuHaut = anciennePosY < raqY;
                         bool balleVientDuBas = anciennePosY > raqY + RAQUETTE_HEIGHT;
-                        
+
                         // Ne rebondir QUE si la balle vient du bon côté
                         if ((balleVientDuHaut && ballSpeedY > 0) ||  // Vient du haut, va vers le bas
                             (balleVientDuBas && ballSpeedY < 0))     // Vient du bas, va vers le haut
@@ -154,10 +173,10 @@ namespace PongServeur
                             // Effet de rebond selon où la balle frappe la raquette
                             float positionRelative = (ballPosX - raqX) / RAQUETTE_WIDTH; // 0 à 1
                             float centrage = (positionRelative - 0.5f) * 2; // -1 à 1
-                            
+
                             // Modifier légèrement la vitesse horizontale selon l'endroit du contact
                             ballSpeedX += (int)(centrage * 2);
-                            
+
                             // Limiter la vitesse pour éviter qu'elle devienne trop rapide
                             ballSpeedX = Math.Clamp(ballSpeedX, -10, 10);
                             ballSpeedY = Math.Clamp(ballSpeedY, -10, 10);
@@ -167,7 +186,7 @@ namespace PongServeur
                             framesSansCollision = 0;
 
                             Console.WriteLine($"✓ Collision valide avec raquette du Joueur {clientInfo.JoueurId}!");
-                            
+
                             // Une seule collision à la fois
                             break;
                         }
@@ -250,6 +269,7 @@ namespace PongServeur
                     var message = MessageReseau.Deserialiser(ligne);
                     if (message != null)
                     {
+                        Console.WriteLine("Traitement message en cours");
                         await TraiterMessage(message, joueurId);
                     }
                 }
@@ -284,13 +304,15 @@ namespace PongServeur
                             var clientInfo = clients.FirstOrDefault(c => c.JoueurId == joueurId);
                             if (clientInfo != null)
                             {
+
+                                Console.WriteLine($"Joueur {joueurId} - Raquette: ({raquetteData.PosX:F1}, {raquetteData.PosY:F1})");
                                 clientInfo.RaquettePosX = raquetteData.PosX;
                                 clientInfo.RaquettePosY = raquetteData.PosY;
-                                
-                                Console.WriteLine($"Joueur {joueurId} - Raquette: ({raquetteData.PosX:F1}, {raquetteData.PosY:F1})");
+
                             }
                         }
 
+                        Console.WriteLine("Envoie a tous les client");
                         // Redistribuer à tous les clients
                         await EnvoyerATousLesClients(message);
                     }

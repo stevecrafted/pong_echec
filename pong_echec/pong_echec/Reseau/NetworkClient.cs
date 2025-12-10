@@ -75,6 +75,7 @@ namespace pong_echec.Reseau
                         OnBallUpdate?.Invoke(ballData);
                     }
                     break;
+                
                 case TypeMessage.UpdateRaquette:
                     var raquetteData = message.ExtraireDataRaquette();
                     if (raquetteData != null)

@@ -33,6 +33,7 @@ namespace pong_echec.Input
         /// </summary>
         public bool EstPresse(Keys touche)
         {
+            Console.WriteLine("Touche " + touche + " pressée");
             return touchesPressees.ContainsKey(touche) && touchesPressees[touche];
         }
 

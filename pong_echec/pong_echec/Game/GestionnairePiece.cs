@@ -21,60 +21,103 @@ namespace pong_echec.Game
         /// <summary>
         /// Initialise les pièces de départ pour les deux joueurs
         /// </summary>
-        public void InitialiserPieces()
+        public void InitialiserPieces(int nombrePiece)
         {
             pieces.Clear();
-
-            // Pièces du Joueur 1 (en bas/gauche)
-            AjouterPiecesJoueur1();
-
-            // Pièces du Joueur 2 (en haut/droite)
-            AjouterPiecesJoueur2();
+            AjouterPiecesJoueur1(nombrePiece);
+            AjouterPiecesJoueur2(nombrePiece);
         }
 
-        private void AjouterPiecesJoueur1()
+        private void AjouterPiecesJoueur1(int nombrePiece)
         {
-            int startY = 10; // En bas de l'écran
-            int pawnY = startY + 110;           // Ligne des pions
             int spacing = 110;
+            int startX = 10;
+            int startY = 10;
+            int pawnY = startY + 110;
 
-            // Ligne de pièces principales
-            pieces.Add(new PieceEchec(10, startY, 1, TypePiece.Tour, 5));
-            pieces.Add(new PieceEchec(10 + spacing, startY, 1, TypePiece.Cavalier, 4));
-            pieces.Add(new PieceEchec(10 + spacing * 2, startY, 1, TypePiece.Fou, 3));
-            pieces.Add(new PieceEchec(10 + spacing * 3, startY, 1, TypePiece.Reine, 6));
-            pieces.Add(new PieceEchec(10 + spacing * 4, startY, 1, TypePiece.Roi, 5));
-            pieces.Add(new PieceEchec(10 + spacing * 5, startY, 1, TypePiece.Fou, 3));
-            pieces.Add(new PieceEchec(10 + spacing * 6, startY, 1, TypePiece.Cavalier, 4));
-            pieces.Add(new PieceEchec(10 + spacing * 7, startY, 1, TypePiece.Tour, 5));
-
-            // Ligne des pions
-            for (int i = 0; i < 8; i++)
+            // Liste des pièces dans l'ordre d'un vrai échiquier
+            var pieceSetup = new List<(int col, TypePiece type, int vie)>
             {
-                pieces.Add(new PieceEchec(10 + spacing * i, pawnY, 1, TypePiece.Pion, 2));
+                (0, TypePiece.Tour, 5),
+                (1, TypePiece.Cavalier, 4),
+                (2, TypePiece.Fou, 3),
+                (3, TypePiece.Reine, 6),
+                (4, TypePiece.Roi, 5),
+                (5, TypePiece.Fou, 3),
+                (6, TypePiece.Cavalier, 4),
+                (7, TypePiece.Tour, 5)
+            };
+
+            // Ajouter les pièces principales selon nombrePiece
+            for (int i = 0; i < nombrePiece; i++)
+            {
+                var p = pieceSetup[i];
+                pieces.Add(new PieceEchec(
+                    startX + p.col * spacing,
+                    startY,
+                    1,
+                    p.type,
+                    p.vie
+                ));
+            }
+
+            // Ajouter les pions en face des pièces sélectionnées
+            for (int i = 0; i < nombrePiece; i++)
+            {
+                int col = pieceSetup[i].col;
+                pieces.Add(new PieceEchec(
+                    startX + col * spacing,
+                    pawnY,
+                    1,
+                    TypePiece.Pion,
+                    2
+                ));
             }
         }
 
-        private void AjouterPiecesJoueur2()
+        private void AjouterPiecesJoueur2(int nombrePiece)
         {
+            int startX = 10;
             int startY = terrain.Height - 110;                    // En haut de l'écran
             int pawnY = startY - 110;            // Ligne des pions
-            int spacing = 110; 
+            int spacing = 110;
 
-            // Ligne de pièces principales
-            pieces.Add(new PieceEchec(10, startY, 2, TypePiece.Tour, 5));
-            pieces.Add(new PieceEchec(10 + spacing, startY, 2, TypePiece.Cavalier, 4));
-            pieces.Add(new PieceEchec(10 + spacing * 2, startY, 2, TypePiece.Fou, 3));
-            pieces.Add(new PieceEchec(10 + spacing * 3, startY, 2, TypePiece.Reine, 6));
-            pieces.Add(new PieceEchec(10 + spacing * 4, startY, 2, TypePiece.Roi, 5));
-            pieces.Add(new PieceEchec(10 + spacing * 5, startY, 2, TypePiece.Fou, 3));
-            pieces.Add(new PieceEchec(10 + spacing * 6, startY, 2, TypePiece.Cavalier, 4));
-            pieces.Add(new PieceEchec(10 + spacing * 7, startY, 2, TypePiece.Tour, 5));
-
-            // Ligne des pions
-            for (int i = 0; i < 8; i++)
+            var pieceSetup = new List<(int col, TypePiece type, int vie)>
             {
-                pieces.Add(new PieceEchec(10 + spacing * i, pawnY, 2, TypePiece.Pion, 2));
+                (0, TypePiece.Tour, 5),
+                (1, TypePiece.Cavalier, 4),
+                (2, TypePiece.Fou, 3),
+                (3, TypePiece.Reine, 6),
+                (4, TypePiece.Roi, 5),
+                (5, TypePiece.Fou, 3),
+                (6, TypePiece.Cavalier, 4),
+                (7, TypePiece.Tour, 5)
+            };
+
+            // Ajouter les pièces principales selon nombrePiece
+            for (int i = 0; i < nombrePiece; i++)
+            {
+                var p = pieceSetup[i];
+                pieces.Add(new PieceEchec(
+                    startX + p.col * spacing,
+                    startY,
+                    1,
+                    p.type,
+                    p.vie
+                ));
+            }
+
+            // Ajouter les pions en face des pièces sélectionnées
+            for (int i = 0; i < nombrePiece; i++)
+            {
+                int col = pieceSetup[i].col;
+                pieces.Add(new PieceEchec(
+                    startX + col * spacing,
+                    pawnY,
+                    1,
+                    TypePiece.Pion,
+                    2
+                ));
             }
         }
 
