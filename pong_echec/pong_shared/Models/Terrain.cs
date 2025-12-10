@@ -1,4 +1,4 @@
-namespace pong_echec.Game
+namespace pong_shared.Models
 {
     public class Terrain
     {

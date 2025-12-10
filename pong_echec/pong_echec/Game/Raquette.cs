@@ -1,4 +1,5 @@
 using System.Drawing;
+using pong_shared.Models;
 
 namespace pong_echec.Game
 {

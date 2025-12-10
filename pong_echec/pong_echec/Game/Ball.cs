@@ -1,3 +1,5 @@
+using pong_shared.Models;
+
 namespace pong_echec.Game
 {
     public class Ball

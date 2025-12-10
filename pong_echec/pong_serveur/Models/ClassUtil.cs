@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using pong_shared;
-using pong_echec.Game;
+using pong_serveur.Game; // Changed from pong_shared.Models
 
 namespace pong_serveur.Models
 {
@@ -12,7 +12,7 @@ namespace pong_serveur.Models
         public int JoueurId { get; set; }
         public float RaquettePosX { get; set; }
         public float RaquettePosY { get; set; }
-        private static List<PieceEchec> PieceEchecs = new List<PieceEchec>();
+        public bool IsReady { get; set; } = false; // Added for ready status 
 
         public ClientInfo(TcpClient client, int joueurId)
         {
@@ -22,5 +22,4 @@ namespace pong_serveur.Models
             RaquettePosY = 400;
         }
     }
-
 }

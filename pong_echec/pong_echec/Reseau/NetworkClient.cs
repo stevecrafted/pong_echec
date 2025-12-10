@@ -19,6 +19,7 @@ namespace pong_echec.Reseau
         public event Action<RaquetteData>? OnRaquetteUpdate;
         public event Action<int>? OnJoueurAssigne;
         public event Action<List<PieceData>>? OnPiecesUpdate;
+        public event Action<GameState>? OnGameStateUpdate;
 
         public async Task<bool> ConnecterAsync(string adresseServeur, int port)
         {
@@ -97,6 +98,14 @@ namespace pong_echec.Reseau
                     if (piecesData != null)
                     {
                         OnPiecesUpdate?.Invoke(piecesData);
+                    }
+                    break;
+                
+                case TypeMessage.UpdateGameState:
+                    var gameState = message.ExtraireDataGameState();
+                    if (gameState != null)
+                    {
+                        OnGameStateUpdate?.Invoke(gameState);
                     }
                     break;
             }

@@ -1,6 +1,4 @@
-using pong_shared.Models;
-
-namespace pong_shared
+namespace pong_shared.Models
 {
     public class ConfigurationJeu
     {

@@ -12,8 +12,10 @@ namespace pong_shared
         AssignerJoueurRaquette,
         ConnexionClient,
         DeconnexionClient,
-        UpdatePieces, // Renamed from InitPiece
+        UpdatePieces,
         UpdatePiece,
+        PlayerReady,
+        UpdateGameState
     }
 
     // Classe de base pour les messages
@@ -73,6 +75,21 @@ namespace pong_shared
             };
         }
 
+        public static MessageReseau CreerPlayerReady()
+        {
+            return new MessageReseau { Type = TypeMessage.PlayerReady };
+        }
+
+        public static MessageReseau CreerUpdateGameState(GameStateType state)
+        {
+            var gameState = new GameState { StateType = state };
+            return new MessageReseau
+            {
+                Type = TypeMessage.UpdateGameState,
+                Data = JsonSerializer.Serialize(gameState)
+            };
+        }
+
         public BallData? ExtraireDataBall()
         {
             if (Type == TypeMessage.UpdateBall)
@@ -105,6 +122,15 @@ namespace pong_shared
             if (Type == TypeMessage.UpdatePieces)
             {
                 return JsonSerializer.Deserialize<List<PieceData>>(Data);
+            }
+            return null;
+        }
+
+        public GameState? ExtraireDataGameState()
+        {
+            if (Type == TypeMessage.UpdateGameState)
+            {
+                return JsonSerializer.Deserialize<GameState>(Data);
             }
             return null;
         }
