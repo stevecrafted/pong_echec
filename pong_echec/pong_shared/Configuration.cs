@@ -1,4 +1,4 @@
-using pong_echec.Game;
+using pong_shared.Models;
 
 namespace pong_shared
 {
@@ -14,7 +14,7 @@ namespace pong_shared
         public float Raquette2X { get; set; }
         public float Raquette2Y { get; set; }
         public int RaquetteWidth { get; set; }
-
+        
         // Méthode statique pour obtenir la configuration selon le nombre de pièces
         public static ConfigurationJeu ObtenirConfiguration(int nombrePieces)
         {

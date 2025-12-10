@@ -1,8 +1,9 @@
-using pong_echec.Game;
+using pong_shared.Models;
 using pong_echec.Input;
 using pong_echec.Reseau;
-using pong_shared;
-using pong_shared.Models;
+using pong_shared; 
+using pong_echec.Game;
+using System.Collections.Generic;
 
 namespace pong_echec.UI
 {
@@ -12,14 +13,10 @@ namespace pong_echec.UI
         Terrain terrain;
         Ball ball;
         System.Windows.Forms.Timer gameLoop;
-
+        GestionnairePieces gestionnairePieces;
         // Raquettes
         Raquette raquetteJoueur1;  // Toujours à gauche
-        Raquette raquetteJoueur2;  // Toujours à droite
-
-        // Pièces d'échecs
-        GestionnairePieces gestionnairePieces;
-
+        Raquette raquetteJoueur2;  // Toujours à droite 
         // Client réseau
         ClientReseau clientReseau;
         bool modeReseau = false;
@@ -28,7 +25,7 @@ namespace pong_echec.UI
         // Pour limiter l'envoi réseau
         private DateTime dernierEnvoi = DateTime.Now;
         private const int INTERVALLE_ENVOI_MS = 16; // ~60 envois/seconde
-        
+
         public MainForm()
         {
             // Console.WriteLine("Main form anh");
@@ -42,6 +39,7 @@ namespace pong_echec.UI
             // Console.WriteLine("Initialisation tapitra");
             terrain = new Terrain(configurationJeu.TerrainWidth, configurationJeu.TerrainHeight);
             ball = new Ball(configurationJeu.BallStartX, configurationJeu.BallStartY);
+            gestionnairePieces = new GestionnairePieces(terrain);
 
             // Créer les deux raquettes
             raquetteJoueur1 = new Raquette(configurationJeu.Raquette1X, configurationJeu.Raquette1Y);
@@ -51,17 +49,13 @@ namespace pong_echec.UI
             raquetteJoueur2.Couleur = Brushes.Red;
             raquetteJoueur2.Width = configurationJeu.RaquetteWidth;
 
-            // Console.WriteLine(" Initialiser le gestionnaire de pièces");
-            // Initialiser le gestionnaire de pièces
-            // gestionnairePieces = new GestionnairePieces(terrain);
-            // gestionnairePieces.InitialiserPieces(nombrePiece);
-
             // Console.WriteLine(" Initialiser le client réseau");
             // Initialiser le client réseau
             clientReseau = new ClientReseau();
             clientReseau.OnBallUpdate += ClientReseau_OnBallUpdate;
             clientReseau.OnRaquetteUpdate += ClientReseau_OnRaquetteUpdate;
             clientReseau.OnJoueurAssigne += ClientReseau_OnJoueurAssigne;
+            clientReseau.OnPiecesUpdate += ClientReseau_OnPiecesUpdate;
 
             // Demander si mode réseau
             InitialiserModeReseauAsync();
@@ -72,6 +66,16 @@ namespace pong_echec.UI
             gameLoop.Tick += GameLoop_Tick;
             // Console.WriteLine("Game loop tick voahantso");
             gameLoop.Start();
+        }
+
+        private void ClientReseau_OnPiecesUpdate(List<PieceData> piecesData)
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new Action(() => ClientReseau_OnPiecesUpdate(piecesData)));
+                return;
+            }
+            gestionnairePieces.UpdatePieces(piecesData);
         }
 
         private async void InitialiserModeReseauAsync()
@@ -150,15 +154,6 @@ namespace pong_echec.UI
         {
             InputManager.Instance.Update();
 
-            // Mise à jour de la balle (seulement en mode local)
-            if (!modeReseau)
-            {
-                // Console.WriteLine("mode local");
-                ball.Update(terrain);
-            }
-
-            // Console.WriteLine("mode reseau");
-            // Console.WriteLine("monJoueurId : " + monJoueurId);
             // Contrôler MA raquette
             if (modeReseau && monJoueurId != -1)
             {
@@ -192,18 +187,7 @@ namespace pong_echec.UI
                     await clientReseau.EnvoyerMessageAsync(message);
                     dernierEnvoi = DateTime.Now;
                 }
-            }
-            // else if (!modeReseau)
-            // {
-            //     // Mode local : contrôler la raquette 1 simplement
-            //     float vitesse = 7f;
-            //     if (InputManager.Instance.EstPresse(Keys.Up))
-            //         raquetteJoueur1.PosY -= vitesse;
-            //     if (InputManager.Instance.EstPresse(Keys.Down))
-            //         raquetteJoueur1.PosY += vitesse;
-
-            //     raquetteJoueur1.PosY = Math.Clamp(raquetteJoueur1.PosY, 0, terrain.Height - raquetteJoueur1.Height);
-            // } 
+            } 
 
             Invalidate();
         }
@@ -215,7 +199,7 @@ namespace pong_echec.UI
             // Fond
             e.Graphics.FillRectangle(Brushes.Black, 0, 0, terrain.Width, terrain.Height);
 
-            // Dessiner les pièces d'échecs (en arrière-plan)
+            // Dessiner les pièces
             gestionnairePieces.Draw(e.Graphics);
 
             // Dessiner balle
@@ -228,15 +212,14 @@ namespace pong_echec.UI
             // Afficher des infos de debug
             if (modeReseau)
             {
-                string debug = $"Joueur {monJoueurId} | ";
-                debug += monJoueurId == 1 ? "Raquette BLEUE" : "Raquette ROUGE";
-                e.Graphics.DrawString(debug, new Font("Arial", 14, FontStyle.Bold), Brushes.White, 10, 10);
-
-                // Afficher le nombre de pièces
                 int piecesJ1 = gestionnairePieces.CompterPiecesVivantes(1);
                 int piecesJ2 = gestionnairePieces.CompterPiecesVivantes(2);
                 string infoPieces = $"Pièces J1: {piecesJ1} | Pièces J2: {piecesJ2}";
                 e.Graphics.DrawString(infoPieces, new Font("Arial", 12), Brushes.Yellow, 10, 35);
+
+                string debug = $"Joueur {monJoueurId} | ";
+                debug += monJoueurId == 1 ? "Raquette BLEUE" : "Raquette ROUGE";
+                e.Graphics.DrawString(debug, new Font("Arial", 14, FontStyle.Bold), Brushes.White, 10, 10);
             }
         }
 

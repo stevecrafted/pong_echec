@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using pong_shared.Models;
+using System.Collections.Generic;
 
 namespace pong_shared
 {
@@ -11,7 +12,7 @@ namespace pong_shared
         AssignerJoueurRaquette,
         ConnexionClient,
         DeconnexionClient,
-        InitPiece,
+        UpdatePieces, // Renamed from InitPiece
         UpdatePiece,
     }
 
@@ -63,6 +64,15 @@ namespace pong_shared
             };
         }
 
+        public static MessageReseau CreerUpdatePieces(List<PieceData> pieces)
+        {
+            return new MessageReseau
+            {
+                Type = TypeMessage.UpdatePieces,
+                Data = JsonSerializer.Serialize(pieces)
+            };
+        }
+
         public BallData? ExtraireDataBall()
         {
             if (Type == TypeMessage.UpdateBall)
@@ -71,7 +81,7 @@ namespace pong_shared
             }
             return null;
         }
-        
+
         public RaquetteData? ExtraireDataRaquette()
         {
             if (Type == TypeMessage.UpdateRaquette)
@@ -88,6 +98,15 @@ namespace pong_shared
                 return int.Parse(Data);
             }
             return -1;
+        }
+
+        public List<PieceData>? ExtraireDataPieces()
+        {
+            if (Type == TypeMessage.UpdatePieces)
+            {
+                return JsonSerializer.Deserialize<List<PieceData>>(Data);
+            }
+            return null;
         }
 
         public string Serialiser()

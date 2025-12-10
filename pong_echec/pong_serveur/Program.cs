@@ -3,6 +3,10 @@ using System.Net.Sockets;
 using System.Text;
 using pong_shared;
 using pong_serveur.Models;
+using pong_serveur.Game;
+using pong_shared.Models;
+using System.Collections.Generic;
+using System.Linq;
 using pong_echec.Game;
 
 namespace pong_serveur
@@ -117,14 +121,28 @@ namespace pong_serveur
 
                 // Incrémenter le compteur de cooldown
                 framesSansCollision++;
-
                 // Vérifier les collisions avec les raquettes
                 VerifierCollisionsRaquettes(ancienPosY);
 
-                // Envoyer la mise à jour à tous les clients
-                var message = MessageReseau.CreerUpdateBall(ballPosX, ballPosY, ballSpeedX, ballSpeedY);
-                await EnvoyerATousLesClients(message);
+                // Envoyer la mise à jour de la balle à tous les clients
+                var messageBalle = MessageReseau.CreerUpdateBall(ballPosX, ballPosY, ballSpeedX, ballSpeedY);
+                await EnvoyerATousLesClients(messageBalle);
 
+                // Envoyer la mise à jour des pièces à tous les clients
+                var piecesData = gestionnairePieces.Pieces.Select(p => new PieceData
+                {
+                    PosX = p.PosX,
+                    PosY = p.PosY,
+                    JoueurIdMaitre = p.JoueurIdMaitre,
+                    Type = p.Type,
+                    Vie = p.Vie,
+                    VieMax = p.VieMax,
+                    EstVivant = p.EstVivant
+                }).ToList();
+                
+                var messagePieces = MessageReseau.CreerUpdatePieces(piecesData);
+                await EnvoyerATousLesClients(messagePieces);
+                
                 // 60 FPS (~16ms)
                 await Task.Delay(16);
             }

@@ -1,9 +1,12 @@
 using System.Drawing;
+using System.Collections.Generic;
+using System.Linq;
+using pong_shared.Models;
 
 namespace pong_echec.Game
 {
     /// <summary>
-    /// Gère toutes les pièces d'échecs des joueurs
+    /// Gère toutes les pièces d'échecs des joueurs côté client
     /// </summary>
     public class GestionnairePieces
     {
@@ -19,8 +22,86 @@ namespace pong_echec.Game
         }
 
         /// <summary>
-        /// Initialise les pièces de départ pour les deux joueurs
+        /// Met à jour la liste des pièces à partir des données du serveur
         /// </summary>
+        public void UpdatePieces(List<PieceData> piecesData)
+        {
+            pieces.Clear();
+            foreach (var pieceData in piecesData)
+            {
+                if (pieceData.EstVivant)
+                {
+                    var newPiece = new PieceEchec(
+                        pieceData.PosX,
+                        pieceData.PosY,
+                        pieceData.JoueurIdMaitre,
+                        pieceData.Type,
+                        pieceData.VieMax
+                    );
+                    newPiece.Vie = pieceData.Vie;
+                    pieces.Add(newPiece);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Ajoute une pièce manuellement
+        /// </summary>
+        public void AjouterPiece(PieceEchec piece)
+        {
+            pieces.Add(piece);
+        }
+
+        /// <summary>
+        /// Supprime une pièce
+        /// </summary>
+        public void SupprimerPiece(PieceEchec piece)
+        {
+            pieces.Remove(piece);
+        }
+
+        /// <summary>
+        /// Dessine toutes les pièces vivantes
+        /// </summary>
+        public void Draw(Graphics g)
+        {
+            foreach (var piece in pieces)
+            {
+                piece.Draw(g);
+            }
+        }
+
+        /// <summary>
+        /// Vérifie les collisions avec la balle
+        /// </summary>
+        public PieceEchec? VerifierCollisionBalle(int ballX, int ballY, int ballRadius)
+        {
+            foreach (var piece in pieces)
+            {
+                if (piece.CollisionAvecBalle(ballX, ballY, ballRadius))
+                {
+                    return piece;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Obtenir toutes les pièces d'un joueur
+        /// </summary>
+        public List<PieceEchec> ObtenirPiecesJoueur(int joueurId)
+        {
+            return pieces.Where(p => p.JoueurIdMaitre == joueurId).ToList();
+        }
+
+        /// <summary>
+        /// Compter les pièces vivantes d'un joueur
+        /// </summary>
+        public int CompterPiecesVivantes(int joueurId)
+        {
+            return pieces.Count(p => p.JoueurIdMaitre == joueurId);
+        }
+
         public void InitialiserPieces(int nombrePiece)
         {
             pieces.Clear();
@@ -119,75 +200,6 @@ namespace pong_echec.Game
                     2
                 ));
             }
-        }
-
-        /// <summary>
-        /// Ajoute une pièce manuellement
-        /// </summary>
-        public void AjouterPiece(PieceEchec piece)
-        {
-            pieces.Add(piece);
-        }
-
-        /// <summary>
-        /// Supprime une pièce
-        /// </summary>
-        public void SupprimerPiece(PieceEchec piece)
-        {
-            pieces.Remove(piece);
-        }
-
-        /// <summary>
-        /// Dessine toutes les pièces vivantes
-        /// </summary>
-        public void Draw(Graphics g)
-        {
-            foreach (var piece in pieces)
-            {
-                if (piece.EstVivant)
-                {
-                    piece.Draw(g);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Vérifie les collisions avec la balle
-        /// </summary>
-        public PieceEchec? VerifierCollisionBalle(int ballX, int ballY, int ballRadius)
-        {
-            foreach (var piece in pieces)
-            {
-                if (piece.EstVivant && piece.CollisionAvecBalle(ballX, ballY, ballRadius))
-                {
-                    return piece;
-                }
-            }
-            return null;
-        }
-
-        /// <summary>
-        /// Obtenir toutes les pièces d'un joueur
-        /// </summary>
-        public List<PieceEchec> ObtenirPiecesJoueur(int joueurId)
-        {
-            return pieces.Where(p => p.JoueurIdMaitre == joueurId && p.EstVivant).ToList();
-        }
-
-        /// <summary>
-        /// Compter les pièces vivantes d'un joueur
-        /// </summary>
-        public int CompterPiecesVivantes(int joueurId)
-        {
-            return pieces.Count(p => p.JoueurIdMaitre == joueurId && p.EstVivant);
-        }
-
-        /// <summary>
-        /// Nettoyer les pièces mortes
-        /// </summary>
-        public void NettoyerPiecesMortes()
-        {
-            pieces.RemoveAll(p => !p.EstVivant);
         }
     }
 }

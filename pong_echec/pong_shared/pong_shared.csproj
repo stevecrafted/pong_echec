@@ -5,10 +5,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+ 
 
-  <ItemGroup>
-    <ProjectReference Include="..\pong_echec\pong_echec.csproj" />
-    <ProjectReference Include="..\pong_serveur\pong_serveur.csproj" />
-  </ItemGroup>
-  
 </Project>

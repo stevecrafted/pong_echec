@@ -1,15 +1,8 @@
+using pong_shared.Models;
+using System.Drawing;
+
 namespace pong_echec.Game
 {
-    public enum TypePiece
-    {
-        Pion,
-        Tour,
-        Cavalier,
-        Fou,
-        Reine,
-        Roi
-    }
-    
     public class PieceEchec
     {
         public int PosX { get; private set; }
@@ -17,7 +10,7 @@ namespace pong_echec.Game
         public int Width { get; set; } = 100;
         public int Height { get; set; } = 100;
         public int Vie { get; set; }
-        public int VieMax { get ; set; }      // Ilaina anaovana affichage fotsiny le vie max 
+        public int VieMax { get; set; }      // Ilaina anaovana affichage fotsiny le vie max 
         public int JoueurIdMaitre { get; private set; }
         public TypePiece Type { get; set; }
         public Brush CouleurBase { get; set; }
