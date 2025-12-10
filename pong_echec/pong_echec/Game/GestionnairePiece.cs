@@ -155,7 +155,7 @@ namespace pong_echec.Game
                 ));
             }
         }
-
+        
         private void AjouterPiecesJoueur2(int nombrePiece)
         {
             int startX = 10;

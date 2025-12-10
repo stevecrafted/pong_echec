@@ -103,32 +103,31 @@ namespace pong_serveur
         {
             while (true)
             {
-                // Sauvegarder l'ancienne position pour détecter la direction
-                int ancienPosX = ballPosX;
+                // 1. MISE À JOUR DE L'ÉTAT DU JEU
                 int ancienPosY = ballPosY;
-
-                // Mise à jour de la balle
+                int ancienPosX = ballPosX;
                 ballPosX += ballSpeedX;
                 ballPosY += ballSpeedY;
 
-                // Rebonds horizontaux (gauche/droite)
+                // Rebonds sur les murs
                 if (ballPosX - ballRadius <= 0 || ballPosX + ballRadius >= TERRAIN_WIDTH)
                     ballSpeedX = -ballSpeedX;
-
-                // Rebonds verticaux (haut/bas)
                 if (ballPosY - ballRadius <= 0 || ballPosY + ballRadius >= TERRAIN_HEIGHT)
                     ballSpeedY = -ballSpeedY;
 
-                // Incrémenter le compteur de cooldown
+                // Cooldown pour les collisions
                 framesSansCollision++;
-                // Vérifier les collisions avec les raquettes
-                VerifierCollisionsRaquettes(ancienPosY);
 
-                // Envoyer la mise à jour de la balle à tous les clients
+                // Vérifier les collisions (raquettes et pièces)
+                VerifierCollisionsRaquettes(ancienPosY);
+                VerifierCollisionPiece(ancienPosY, ancienPosX);
+
+                // 2. SÉRIALISATION ET ENVOI DE L'ÉTAT
+                // Envoyer la mise à jour de la balle
                 var messageBalle = MessageReseau.CreerUpdateBall(ballPosX, ballPosY, ballSpeedX, ballSpeedY);
                 await EnvoyerATousLesClients(messageBalle);
 
-                // Envoyer la mise à jour des pièces à tous les clients
+                // Envoyer la mise à jour des pièces
                 var piecesData = gestionnairePieces.Pieces.Select(p => new PieceData
                 {
                     PosX = p.PosX,
@@ -139,12 +138,79 @@ namespace pong_serveur
                     VieMax = p.VieMax,
                     EstVivant = p.EstVivant
                 }).ToList();
-                
                 var messagePieces = MessageReseau.CreerUpdatePieces(piecesData);
                 await EnvoyerATousLesClients(messagePieces);
-                
-                // 60 FPS (~16ms)
-                await Task.Delay(16);
+
+                // 3. ATTENTE
+                await Task.Delay(16); // ~60 FPS
+            }
+        }
+
+        static void VerifierCollisionPiece(int anciennePosY, int anciennePosX)
+        {
+            if (framesSansCollision < FRAMES_COOLDOWN)
+                return;
+
+            foreach (var piece in gestionnairePieces.Pieces)
+            {
+                if (!piece.EstVivant) continue;
+
+                if (piece.CollisionAvecBalle(ballPosX, ballPosY, ballRadius))
+                {
+                    // Détection direction réelle
+                    bool balleVientDuHaut = anciennePosY < piece.PosY;
+                    bool balleVientDuBas = anciennePosY > piece.PosY + piece.Height;
+                    bool balleVientDuGauche = anciennePosX < piece.PosX;
+                    bool balleVientDuDroite = anciennePosX > piece.PosX + piece.Width;
+
+                    // Collision verticale ?
+                    bool collisionVerticale =
+                        (balleVientDuHaut && ballSpeedY > 0) ||
+                        (balleVientDuBas && ballSpeedY < 0);
+
+                    // Collision horizontale ?
+                    bool collisionHorizontale =
+                        (balleVientDuGauche && ballSpeedX > 0) ||
+                        (balleVientDuDroite && ballSpeedX < 0);
+
+                    // *** Choix du rebond : celui qui correspond au déplacement dominant ***
+                    if (collisionVerticale && Math.Abs(ballSpeedY) >= Math.Abs(ballSpeedX))
+                    {
+                        // Rebond vertical
+                        ballSpeedY = -ballSpeedY;
+
+                        if (balleVientDuHaut)
+                            ballPosY = piece.PosY - ballRadius - 2;
+                        else
+                            ballPosY = piece.PosY + piece.Height + ballRadius + 2;
+
+                        // Effet d’angle (rebond style Pong)
+                        float positionRelative = (ballPosX - piece.PosX) / (float)piece.Width;
+                        float centrage = (positionRelative - 0.5f) * 2;
+                        ballSpeedX += (int)(centrage * 2);
+                    }
+                    else if (collisionHorizontale)
+                    {
+                        // Rebond horizontal
+                        ballSpeedX = -ballSpeedX;
+
+                        if (balleVientDuGauche)
+                            ballPosX = piece.PosX - ballRadius - 2;
+                        else
+                            ballPosX = piece.PosX + piece.Width + ballRadius + 2;
+                    }
+
+                    // Clamp vitesse
+                    ballSpeedX = Math.Clamp(ballSpeedX, -10, 10);
+                    ballSpeedY = Math.Clamp(ballSpeedY, -10, 10);
+
+                    // Dégâts
+                    piece.PrendreDegats(1);
+
+                    framesSansCollision = 0;
+                    Console.WriteLine($"Pièce touchée! Vie restante: {piece.Vie}");
+                    break;
+                }
             }
         }
 

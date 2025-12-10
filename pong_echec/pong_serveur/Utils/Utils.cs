@@ -17,5 +17,21 @@ namespace pong_serveur.Utils
             // Collision si la distance est inférieure au rayon
             return distanceSquared < (ballRadius * ballRadius);
         }
+
+        public static bool CollisionBallPiece(int ballX, int ballY, int ballRadius,
+                              float pieceX, float pieceY, int pieceWidth, int pieceHeight)
+        {
+            // Trouver le point le plus proche de la balle sur le rectangle de la raquette
+            float closestX = Math.Clamp(ballX, pieceX, pieceX + pieceWidth);
+            float closestY = Math.Clamp(ballY, pieceY, pieceY + pieceHeight);
+
+            // Calculer la distance entre le centre de la balle et ce point
+            float distanceX = ballX - closestX;
+            float distanceY = ballY - closestY;
+            float distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
+
+            // Collision si la distance est inférieure au rayon
+            return distanceSquared < (ballRadius * ballRadius);
+        }
     }
 }
