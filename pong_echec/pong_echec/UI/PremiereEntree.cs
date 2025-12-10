@@ -4,8 +4,10 @@ namespace pong_echec.UI
 {
     public class PremiereEntree
     {
-        public async static void DemanderModeReseau(ClientReseau clientReseau, bool modeReseau)
+        // 1. Changer la signature pour retourner Task<bool> au lieu de bool
+        public async static Task<bool> DemanderModeReseau(ClientReseau clientReseau)
         {
+            bool resultatBool = false;
             var result = MessageBox.Show(
                 "Voulez-vous jouer en mode réseau ?",
                 "Mode de jeu",
@@ -21,7 +23,7 @@ namespace pong_echec.UI
                     bool connecte = await clientReseau.ConnecterAsync(adresse, 5000);
                     if (connecte)
                     {
-                        modeReseau = true;
+                        resultatBool = true;
                         MessageBox.Show("Connecté au serveur!", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                     else
@@ -30,6 +32,8 @@ namespace pong_echec.UI
                     }
                 }
             }
+
+            return resultatBool;
         }
 
         public static string PromptAdresseServeur()

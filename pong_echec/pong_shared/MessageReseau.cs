@@ -10,7 +10,9 @@ namespace pong_shared
         UpdateRaquette,
         AssignerJoueurRaquette,
         ConnexionClient,
-        DeconnexionClient
+        DeconnexionClient,
+        InitPiece,
+        UpdatePiece,
     }
 
     // Classe de base pour les messages

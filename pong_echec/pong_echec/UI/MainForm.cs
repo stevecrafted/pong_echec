@@ -28,18 +28,18 @@ namespace pong_echec.UI
         // Pour limiter l'envoi réseau
         private DateTime dernierEnvoi = DateTime.Now;
         private const int INTERVALLE_ENVOI_MS = 16; // ~60 envois/seconde
-
+        
         public MainForm()
         {
-            Console.WriteLine("Main form anh");
-            int nombrePiece = 8;
+            // Console.WriteLine("Main form anh");
+            int nombrePiece = 4;
             configurationJeu = ConfigurationJeu.ObtenirConfiguration(nombrePiece);
 
             InitializeComponent(configurationJeu);
             this.DoubleBuffered = true;
             this.KeyPreview = true;
 
-            Console.WriteLine("Initialisation tapitra");
+            // Console.WriteLine("Initialisation tapitra");
             terrain = new Terrain(configurationJeu.TerrainWidth, configurationJeu.TerrainHeight);
             ball = new Ball(configurationJeu.BallStartX, configurationJeu.BallStartY);
 
@@ -51,12 +51,12 @@ namespace pong_echec.UI
             raquetteJoueur2.Couleur = Brushes.Red;
             raquetteJoueur2.Width = configurationJeu.RaquetteWidth;
 
-            Console.WriteLine(" Initialiser le gestionnaire de pièces");
+            // Console.WriteLine(" Initialiser le gestionnaire de pièces");
             // Initialiser le gestionnaire de pièces
-            gestionnairePieces = new GestionnairePieces(terrain);
-            gestionnairePieces.InitialiserPieces(nombrePiece);
+            // gestionnairePieces = new GestionnairePieces(terrain);
+            // gestionnairePieces.InitialiserPieces(nombrePiece);
 
-            Console.WriteLine(" Initialiser le client réseau");
+            // Console.WriteLine(" Initialiser le client réseau");
             // Initialiser le client réseau
             clientReseau = new ClientReseau();
             clientReseau.OnBallUpdate += ClientReseau_OnBallUpdate;
@@ -64,14 +64,20 @@ namespace pong_echec.UI
             clientReseau.OnJoueurAssigne += ClientReseau_OnJoueurAssigne;
 
             // Demander si mode réseau
-            PremiereEntree.DemanderModeReseau(clientReseau, modeReseau);
+            InitialiserModeReseauAsync();
 
             gameLoop = new System.Windows.Forms.Timer();
             gameLoop.Interval = 10;
-            Console.WriteLine("Hiditra Game loop");
+            // Console.WriteLine("Hiditra Game loop");
             gameLoop.Tick += GameLoop_Tick;
-            Console.WriteLine("Game loop tick voahantso");
+            // Console.WriteLine("Game loop tick voahantso");
             gameLoop.Start();
+        }
+
+        private async void InitialiserModeReseauAsync()
+        {
+            modeReseau = await PremiereEntree.DemanderModeReseau(clientReseau);
+            // Console.WriteLine($"🔍 Mode réseau configuré : {modeReseau}");
         }
 
         private void ClientReseau_OnJoueurAssigne(int joueurId)
@@ -147,15 +153,16 @@ namespace pong_echec.UI
             // Mise à jour de la balle (seulement en mode local)
             if (!modeReseau)
             {
-                Console.WriteLine("mode local");
+                // Console.WriteLine("mode local");
                 ball.Update(terrain);
             }
 
-            Console.WriteLine("mode reseau");
+            // Console.WriteLine("mode reseau");
+            // Console.WriteLine("monJoueurId : " + monJoueurId);
             // Contrôler MA raquette
             if (modeReseau && monJoueurId != -1)
             {
-                Console.WriteLine("Controlle raquette");
+                // Console.WriteLine("Controlle raquette");
                 Raquette maRaquette = monJoueurId == 1 ? raquetteJoueur1 : raquetteJoueur2;
 
                 float ancienneX = maRaquette.PosX;
@@ -181,7 +188,7 @@ namespace pong_echec.UI
                     (DateTime.Now - dernierEnvoi).TotalMilliseconds >= INTERVALLE_ENVOI_MS)
                 {
                     var message = MessageReseau.CreerUpdateRaquette(monJoueurId, maRaquette.PosX, maRaquette.PosY);
-                    Console.WriteLine("Raquette " + monJoueurId + " Mihetsika");
+                    // Console.WriteLine("Raquette " + monJoueurId + " Mihetsika");
                     await clientReseau.EnvoyerMessageAsync(message);
                     dernierEnvoi = DateTime.Now;
                 }

@@ -9,6 +9,7 @@ namespace pong_echec.Game
         Reine,
         Roi
     }
+    
     public class PieceEchec
     {
         public int PosX { get; private set; }
@@ -19,7 +20,6 @@ namespace pong_echec.Game
         public int VieMax { get ; set; }      // Ilaina anaovana affichage fotsiny le vie max 
         public int JoueurIdMaitre { get; private set; }
         public TypePiece Type { get; set; }
-
         public Brush CouleurBase { get; set; }
         public bool EstVivant => Vie > 0;
 

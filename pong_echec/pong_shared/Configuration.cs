@@ -1,3 +1,5 @@
+using pong_echec.Game;
+
 namespace pong_shared
 {
     public class ConfigurationJeu

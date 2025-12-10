@@ -3,11 +3,13 @@ using System.Net.Sockets;
 using System.Text;
 using pong_shared;
 using pong_serveur.Models;
+using pong_echec.Game;
 
 namespace pong_serveur
 {
     class Program
     {
+        private static GestionnairePieces gestionnairePieces;
         private static List<ClientInfo> clients = new List<ClientInfo>();
         private static object lockClients = new object();
         private static int prochainJoueurId = 1;
@@ -31,6 +33,11 @@ namespace pong_serveur
         {
             ConfigurationJeu configurationJeu = ConfigurationJeu.ObtenirConfiguration(nbPieces);
 
+            // Initialisation des pieces de chaque joueur
+            Terrain terrain = new Terrain(TERRAIN_WIDTH, TERRAIN_HEIGHT);
+            gestionnairePieces = new GestionnairePieces(terrain);
+            gestionnairePieces.InitialiserPieces(nbPieces);
+
             // Appliquer la configuration
             TERRAIN_WIDTH = configurationJeu.TerrainWidth;
             TERRAIN_HEIGHT = configurationJeu.TerrainHeight;
@@ -47,7 +54,7 @@ namespace pong_serveur
             Console.WriteLine("=== Serveur Pong ===");
             Console.WriteLine("Démarrage du serveur...");
 
-            int nombrePiece = 8;
+            int nombrePiece = 4;
             InitialiserJeu(nombrePiece);
 
             // Démarrer le serveur TCP
@@ -76,7 +83,6 @@ namespace pong_serveur
 
                     Console.WriteLine($"Nouveau client connecté: {client.Client.RemoteEndPoint} - Joueur {joueurId}");
                 }
-
 
                 // Envoyer l'ID du joueur au client
                 var msgAssignation = MessageReseau.CreerAssignerJoueur(joueurId);
