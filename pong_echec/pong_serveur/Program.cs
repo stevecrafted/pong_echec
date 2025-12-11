@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using pong_shared;
@@ -13,6 +13,7 @@ namespace pong_serveur
     class Program
     {
         private static GestionnairePieces gestionnairePieces;
+        private static bool balleLancee = false;
         private static List<ClientInfo> clients = new List<ClientInfo>();
         private static object lockClients = new object();
         private static int prochainJoueurId = 1;
@@ -28,7 +29,7 @@ namespace pong_serveur
         // Variables pour éviter les collisions multiples
         private static int dernierJoueurTouche = 0;
         private static int framesSansCollision = 0;
-        private const int FRAMES_COOLDOWN = 10; // Délai anti-rebond multiple
+        private const int FRAMES_COOLDOWN = 10;
         private static int TERRAIN_WIDTH = 900;
         private static int TERRAIN_HEIGHT = 900;
 
@@ -36,16 +37,18 @@ namespace pong_serveur
         {
             ConfigurationJeu configurationJeu = ConfigurationJeu.ObtenirConfiguration(nbPieces);
 
-            // Initialisation des pieces de chaque joueur
             Terrain terrain = new Terrain(TERRAIN_WIDTH, TERRAIN_HEIGHT);
             gestionnairePieces = new GestionnairePieces(terrain);
             gestionnairePieces.InitialiserPieces(nbPieces);
 
-            // Appliquer la configuration
             TERRAIN_WIDTH = configurationJeu.TerrainWidth;
             TERRAIN_HEIGHT = configurationJeu.TerrainHeight;
             ballPosX = configurationJeu.BallStartX;
             ballPosY = configurationJeu.BallStartY;
+
+            balleLancee = false;
+            ballSpeedX = 0;
+            ballSpeedY = 0;
 
             Console.WriteLine($"Jeu initialisé avec {nbPieces} pièces");
             Console.WriteLine($"Terrain: {TERRAIN_WIDTH}x{TERRAIN_HEIGHT}");
@@ -57,18 +60,12 @@ namespace pong_serveur
             Console.WriteLine("=== Serveur Pong ===");
             Console.WriteLine("Démarrage du serveur...");
 
-            int nombrePiece = 4;
-            InitialiserJeu(nombrePiece);
-
-            // Démarrer le serveur TCP
             TcpListener serveur = new TcpListener(IPAddress.Any, 5000);
             serveur.Start();
             Console.WriteLine("Serveur en écoute sur le port 5000");
 
-            // Démarrer la boucle de jeu
             _ = Task.Run(GameLoop);
 
-            // Accepter les connexions
             while (true)
             {
                 TcpClient client = await serveur.AcceptTcpClientAsync();
@@ -76,10 +73,9 @@ namespace pong_serveur
                 int joueurId;
                 lock (lockClients)
                 {
-                    // Assigner un ID de joueur (1 ou 2)
                     joueurId = prochainJoueurId;
                     prochainJoueurId++;
-                    if (prochainJoueurId > 2) prochainJoueurId = 1; // Limite à 2 joueurs
+                    if (prochainJoueurId > 2) prochainJoueurId = 1;
 
                     ClientInfo clientInfo = new ClientInfo(client, joueurId);
                     clients.Add(clientInfo);
@@ -87,47 +83,43 @@ namespace pong_serveur
                     Console.WriteLine($"Nouveau client connecté: {client.Client.RemoteEndPoint} - Joueur {joueurId}");
                 }
 
-                // Envoyer l'ID du joueur au client et l'état du jeu
                 var msgAssignation = MessageReseau.CreerAssignerJoueur(joueurId);
                 await EnvoyerAUnClient(client, msgAssignation);
                 var msgGameState = MessageReseau.CreerUpdateGameState(currentGameState);
                 await EnvoyerAUnClient(client, msgGameState);
+                
+                // NOUVEAU : Envoyer l'état initial de la balle
+                var msgBallActive = MessageReseau.CreerBallActiveChange(balleLancee);
+                await EnvoyerAUnClient(client, msgBallActive);
 
-                Console.WriteLine("Envoi au client de sont assignation reussi");
+                Console.WriteLine("Envoi au client de son assignation réussi");
 
-                // Gérer le client dans un thread séparé
                 _ = Task.Run(() => GererClient(client, joueurId));
             }
         }
 
-        // Boucle de jeu principale
         static async Task GameLoop()
         {
             while (true)
             {
-                if (currentGameState == GameStateType.InProgress)
+                if (currentGameState == GameStateType.InProgress && balleLancee)
                 {
-                    // 1. MISE À JOUR DE L'ÉTAT DU JEU
                     int ancienPosY = ballPosY;
                     int ancienPosX = ballPosX;
                     ballPosX += ballSpeedX;
                     ballPosY += ballSpeedY;
 
-                    // Rebonds sur les murs
                     if (ballPosX - ballRadius <= 0 || ballPosX + ballRadius >= TERRAIN_WIDTH)
                         ballSpeedX = -ballSpeedX;
                     if (ballPosY - ballRadius <= 0 || ballPosY + ballRadius >= TERRAIN_HEIGHT)
                         ballSpeedY = -ballSpeedY;
 
-                    // Cooldown pour les collisions
                     framesSansCollision++;
 
-                    // Vérifier les collisions (raquettes et pièces)
                     VerifierCollisionsRaquettes(ancienPosY);
-                    VerifierCollisionPiece(ancienPosY, ancienPosX);
+                    await VerifierCollisionPiece(ancienPosY, ancienPosX);
                 }
-
-                // 2. SÉRIALISATION ET ENVOI DE L'ÉTAT (toujours, pour que les clients aient la position initiale)
+                
                 var messageBalle = MessageReseau.CreerUpdateBall(ballPosX, ballPosY, ballSpeedX, ballSpeedY);
                 await EnvoyerATousLesClients(messageBalle);
 
@@ -144,12 +136,11 @@ namespace pong_serveur
                 var messagePieces = MessageReseau.CreerUpdatePieces(piecesData);
                 await EnvoyerATousLesClients(messagePieces);
 
-                // 3. ATTENTE
-                await Task.Delay(16); // ~60 FPS
+                await Task.Delay(16);
             }
         }
 
-        static void VerifierCollisionPiece(int anciennePosY, int anciennePosX)
+        static async Task VerifierCollisionPiece(int anciennePosY, int anciennePosX)
         {
             if (framesSansCollision < FRAMES_COOLDOWN)
                 return;
@@ -160,26 +151,21 @@ namespace pong_serveur
 
                 if (piece.CollisionAvecBalle(ballPosX, ballPosY, ballRadius))
                 {
-                    // Détection direction réelle
                     bool balleVientDuHaut = anciennePosY < piece.PosY;
                     bool balleVientDuBas = anciennePosY > piece.PosY + piece.Height;
                     bool balleVientDuGauche = anciennePosX < piece.PosX;
                     bool balleVientDuDroite = anciennePosX > piece.PosX + piece.Width;
 
-                    // Collision verticale ?
                     bool collisionVerticale =
                         (balleVientDuHaut && ballSpeedY > 0) ||
                         (balleVientDuBas && ballSpeedY < 0);
 
-                    // Collision horizontale ?
                     bool collisionHorizontale =
                         (balleVientDuGauche && ballSpeedX > 0) ||
                         (balleVientDuDroite && ballSpeedX < 0);
 
-                    // *** Choix du rebond : celui qui correspond au déplacement dominant ***
                     if (collisionVerticale && Math.Abs(ballSpeedY) >= Math.Abs(ballSpeedX))
                     {
-                        // Rebond vertical
                         ballSpeedY = -ballSpeedY;
 
                         if (balleVientDuHaut)
@@ -187,14 +173,12 @@ namespace pong_serveur
                         else
                             ballPosY = piece.PosY + piece.Height + ballRadius + 2;
 
-                        // Effet d’angle (rebond style Pong)
                         float positionRelative = (ballPosX - piece.PosX) / (float)piece.Width;
                         float centrage = (positionRelative - 0.5f) * 2;
                         ballSpeedX += (int)(centrage * 2);
                     }
                     else if (collisionHorizontale)
                     {
-                        // Rebond horizontal
                         ballSpeedX = -ballSpeedX;
 
                         if (balleVientDuGauche)
@@ -203,24 +187,26 @@ namespace pong_serveur
                             ballPosX = piece.PosX + piece.Width + ballRadius + 2;
                     }
 
-                    // Clamp vitesse
                     ballSpeedX = Math.Clamp(ballSpeedX, -10, 10);
                     ballSpeedY = Math.Clamp(ballSpeedY, -10, 10);
 
-                    // Dégâts
                     piece.PrendreDegats(1);
 
                     framesSansCollision = 0;
                     Console.WriteLine($"Pièce touchée! Vie restante: {piece.Vie}");
+
+                    if (!piece.EstVivant && piece.Type == TypePiece.Roi)
+                    {
+                        Console.WriteLine($"Le Roi du joueur {piece.JoueurIdMaitre} est mort! Game Over.");
+                        await SetGameState(GameStateType.GameOver);
+                    }
                     break;
                 }
             }
         }
 
-        // Vérifier les collisions entre la balle et les raquettes
         static void VerifierCollisionsRaquettes(int anciennePosY)
         {
-            // Cooldown : éviter les collisions multiples successives
             if (framesSansCollision < FRAMES_COOLDOWN)
                 return;
 
@@ -264,10 +250,6 @@ namespace pong_serveur
 
                             Console.WriteLine($"✓ Collision valide avec raquette du Joueur {clientInfo.JoueurId}!");
                             break;
-                        }
-                        else
-                        {
-                            Console.WriteLine($"✗ Collision ignorée (mauvaise direction) - Joueur {clientInfo.JoueurId}");
                         }
                     }
                 }
@@ -362,6 +344,36 @@ namespace pong_serveur
         {
             switch (message.Type)
             {
+                case TypeMessage.LancerBalle:
+                    if (!balleLancee && joueurId == 1)
+                    {
+                        var direction = message.ExtraireDirectionBalle();
+                        ballSpeedX = direction.SpeedX;
+                        ballSpeedY = direction.SpeedY;
+                        balleLancee = true;
+                        
+                        // NOUVEAU : Notifier tous les clients que la balle est active
+                        var msgBallActive = MessageReseau.CreerBallActiveChange(true);
+                        await EnvoyerATousLesClients(msgBallActive);
+                        
+                        Console.WriteLine($"Joueur 1 lance la balle: ({ballSpeedX}, {ballSpeedY})");
+                    }
+                    break;
+
+                case TypeMessage.ConfigurationPartie:
+                    int nombrePieces = message.ExtraireNombrePieces();
+
+                    if (gestionnairePieces == null)
+                    {
+                        Console.WriteLine($"📋 Configuration reçue: {nombrePieces} pièces");
+                        InitialiserJeu(nombrePieces);
+
+                        _ = Task.Run(GameLoop);
+
+                        Console.WriteLine("✅ Jeu initialisé et prêt!");
+                    }
+                    break;
+                    
                 case TypeMessage.UpdateRaquette:
                     var raquetteData = message.ExtraireDataRaquette();
                     if (raquetteData != null)
@@ -378,7 +390,7 @@ namespace pong_serveur
                         await EnvoyerATousLesClients(message);
                     }
                     break;
-                
+
                 case TypeMessage.PlayerReady:
                     bool allReady = false;
                     lock (lockClients)
@@ -390,7 +402,6 @@ namespace pong_serveur
                             Console.WriteLine($"Joueur {joueurId} est prêt!");
                         }
 
-                        // Vérifier si tous les joueurs sont prêts (on suppose 2 joueurs)
                         if (clients.Count == 2 && clients.All(c => c.IsReady))
                         {
                             allReady = true;
@@ -400,12 +411,22 @@ namespace pong_serveur
                     if (allReady)
                     {
                         Console.WriteLine("Tous les joueurs sont prêts! La partie commence.");
-                        currentGameState = GameStateType.InProgress;
-                        var gameStateMessage = MessageReseau.CreerUpdateGameState(currentGameState);
-                        await EnvoyerATousLesClients(gameStateMessage);
+                        await SetGameState(GameStateType.InProgress);
+                        
+                        // NOUVEAU : Réinitialiser l'état de la balle pour la nouvelle partie
+                        balleLancee = false;
+                        var msgBallActive = MessageReseau.CreerBallActiveChange(false);
+                        await EnvoyerATousLesClients(msgBallActive);
                     }
                     break;
             }
+        }
+
+        static async Task SetGameState(GameStateType newState)
+        {
+            currentGameState = newState;
+            var gameStateMessage = MessageReseau.CreerUpdateGameState(currentGameState);
+            await EnvoyerATousLesClients(gameStateMessage);
         }
     }
 }

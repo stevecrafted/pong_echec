@@ -8,6 +8,7 @@ namespace pong_echec.Reseau
 {
     public class ClientReseau
     {
+        private bool balleActive = false;
         private TcpClient? client;
         private NetworkStream? stream;
         private StreamReader? reader;
@@ -20,6 +21,7 @@ namespace pong_echec.Reseau
         public event Action<int>? OnJoueurAssigne;
         public event Action<List<PieceData>>? OnPiecesUpdate;
         public event Action<GameState>? OnGameStateUpdate;
+        public event Action<bool>? OnBallActiveChange; // Direction am voloany
 
         public async Task<bool> ConnecterAsync(string adresseServeur, int port)
         {
@@ -31,10 +33,10 @@ namespace pong_echec.Reseau
                 reader = new StreamReader(stream, Encoding.UTF8);
 
                 Console.WriteLine("Connecté au serveur!");
-                
+
                 // Démarrer l'écoute des messages
                 _ = Task.Run(EcouterServeur);
-                
+
                 return true;
             }
             catch (Exception ex)
@@ -73,12 +75,18 @@ namespace pong_echec.Reseau
             {
                 case TypeMessage.UpdateBall:
                     var ballData = message.ExtraireDataBall();
-                    if (ballData != null)
+
+                    // Détecter si la balle bouge
+                    bool nouvelleActivite = (ballData.SpeedX != 0 || ballData.SpeedY != 0);
+                    if (nouvelleActivite != balleActive)
                     {
-                        OnBallUpdate?.Invoke(ballData);
+                        balleActive = nouvelleActivite;
+                        OnBallActiveChange?.Invoke(balleActive); // NOUVEAU
                     }
+
+                    OnBallUpdate?.Invoke(ballData); // AJOUTER cette ligne
                     break;
-                
+
                 case TypeMessage.UpdateRaquette:
                     var raquetteData = message.ExtraireDataRaquette();
                     if (raquetteData != null)
@@ -92,7 +100,7 @@ namespace pong_echec.Reseau
                     Console.WriteLine($"Je suis le joueur {MonJoueurId}");
                     OnJoueurAssigne?.Invoke(MonJoueurId);
                     break;
-                
+
                 case TypeMessage.UpdatePieces:
                     var piecesData = message.ExtraireDataPieces();
                     if (piecesData != null)
@@ -100,7 +108,7 @@ namespace pong_echec.Reseau
                         OnPiecesUpdate?.Invoke(piecesData);
                     }
                     break;
-                
+
                 case TypeMessage.UpdateGameState:
                     var gameState = message.ExtraireDataGameState();
                     if (gameState != null)
@@ -119,6 +127,12 @@ namespace pong_echec.Reseau
                 byte[] data = Encoding.UTF8.GetBytes(json);
                 await stream.WriteAsync(data, 0, data.Length);
             }
+        }
+
+        public async Task LancerBalleAsync(int speedX, int speedY)
+        {
+            var message = MessageReseau.CreerLancerBalle(speedX, speedY);
+            await EnvoyerMessageAsync(message);
         }
 
         public void Deconnecter()

@@ -7,6 +7,7 @@ namespace pong_shared
     // Types de messages
     public enum TypeMessage
     {
+        LancerBalle,
         UpdateBall,
         UpdateRaquette,
         AssignerJoueurRaquette,
@@ -15,7 +16,9 @@ namespace pong_shared
         UpdatePieces,
         UpdatePiece,
         PlayerReady,
-        UpdateGameState
+        UpdateGameState,
+        ConfigurationPartie,
+        BallActiveChange  // NOUVEAU
     }
 
     // Classe de base pour les messages
@@ -90,6 +93,48 @@ namespace pong_shared
             };
         }
 
+        public static MessageReseau CreerLancerBalle(int speedX, int speedY)
+        {
+            var data = new { SpeedX = speedX, SpeedY = speedY };
+
+            return new MessageReseau
+            {
+                Type = TypeMessage.LancerBalle,
+                Data = JsonSerializer.Serialize(data)
+            };
+        }
+
+        // NOUVEAU : Créer un message pour changer l'état actif de la balle
+        public static MessageReseau CreerBallActiveChange(bool active)
+        {
+            return new MessageReseau
+            {
+                Type = TypeMessage.BallActiveChange,
+                Data = active.ToString()
+            };
+        }
+
+        public static MessageReseau CreerConfigurationPartie(int nombrePieces)
+        {
+            return new MessageReseau
+            {
+                Type = TypeMessage.ConfigurationPartie,
+                Data = nombrePieces.ToString()
+            };
+        }
+
+        // Méthodes d'extraction
+
+        public (int SpeedX, int SpeedY) ExtraireDirectionBalle()
+        {
+            var data = JsonSerializer.Deserialize<Dictionary<string, int>>(Data);
+
+            if (data == null || !data.ContainsKey("SpeedX") || !data.ContainsKey("SpeedY"))
+                return (0, 0);
+
+            return (data["SpeedX"], data["SpeedY"]);
+        }
+
         public BallData? ExtraireDataBall()
         {
             if (Type == TypeMessage.UpdateBall)
@@ -133,6 +178,25 @@ namespace pong_shared
                 return JsonSerializer.Deserialize<GameState>(Data);
             }
             return null;
+        }
+
+        // NOUVEAU : Extraire l'état actif de la balle
+        public bool ExtraireBallActive()
+        {
+            if (Type == TypeMessage.BallActiveChange)
+            {
+                return bool.Parse(Data);
+            }
+            return false;
+        }
+
+        public int ExtraireNombrePieces()
+        {
+            if (Type == TypeMessage.ConfigurationPartie)
+            {
+                return int.Parse(Data);
+            }
+            return 8; // Valeur par défaut
         }
 
         public string Serialiser()

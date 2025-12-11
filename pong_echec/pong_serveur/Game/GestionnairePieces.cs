@@ -33,14 +33,14 @@ namespace pong_serveur.Game
 
             var pieceSetup = new List<(int col, TypePiece type, int vie)>
             {
-                (0, TypePiece.Tour, 5),
-                (1, TypePiece.Cavalier, 4),
-                (2, TypePiece.Fou, 3),
-                (3, TypePiece.Reine, 6),
-                (4, TypePiece.Roi, 5),
-                (5, TypePiece.Fou, 3),
-                (6, TypePiece.Cavalier, 4),
-                (7, TypePiece.Tour, 5)
+                (4, TypePiece.Roi, 5),      // 0 - Centre gauche
+                (3, TypePiece.Reine, 6),    // 1 - Centre droit
+                (5, TypePiece.Fou, 3),      // 2 - Fou droit
+                (2, TypePiece.Fou, 3),      // 3 - Fou gauche
+                (6, TypePiece.Cavalier, 4), // 4 - Cavalier droit
+                (1, TypePiece.Cavalier, 4), // 5 - Cavalier gauche
+                (7, TypePiece.Tour, 5),     // 6 - Tour droite
+                (0, TypePiece.Tour, 5)
             };
 
             for (int i = 0; i < nombrePiece; i++)
