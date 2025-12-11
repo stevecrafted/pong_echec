@@ -1,0 +1,67 @@
+# Liste des tâches pour la refactorisation du jeu Pong-Echec
+
+## Objectif : Le serveur gère l'état du jeu, le client ne fait qu'afficher.
+
+### Étape 1 : Centraliser la logique des pièces sur le serveur
+
+-   [x] **Créer un modèle de données partagé pour les pièces (`PieceData`)**
+    -   Créer le fichier `pong_shared/Models/PieceData.cs`.
+    -   Définir les propriétés sérialisables (Position, Vie, Type, etc.).
+    -   S'assurer qu'il ne contient aucune logique de jeu (comme `PrendreDegats`).
+
+-   [x] **Déplacer la gestion des pièces (`PieceEchec`, `GestionnairePieces`) côté serveur**
+    -   Créer le dossier `pong_serveur/Game`.
+    -   Créer `pong_serveur/Game/PieceEchec.cs` (sans code de dessin).
+    -   Créer `pong_serveur/Game/GestionnairePieces.cs` (sans code de dessin).
+    -   Supprimer les anciens fichiers de `pong_echec/Game/`.
+
+-   [x] **Déplacer l'énumération `TypePiece` dans le projet partagé**
+    -   Créer le fichier `pong_shared/Models/TypePiece.cs` pour y mettre l'énumération.
+    -   Mettre à jour les fichiers `PieceEchec.cs` (client et serveur) pour qu'ils utilisent cette énumération partagée.
+
+### Étape 2 : Le serveur envoie l'état des pièces au client
+
+-   [x] **Mettre à jour la communication réseau (`MessageReseau.cs`)**
+    -   Ajouter un type de message `UpdatePieces`.
+    -   Créer une méthode `CreerUpdatePieces` qui sérialise une liste de `PieceData`.
+    -   Créer une méthode `ExtraireDataPieces` qui désérialise les données.
+
+-   [x] **Le serveur envoie les pièces à chaque tick de la boucle de jeu**
+    -   Dans `pong_serveur/Program.cs`, dans la `GameLoop` :
+        1.  Modifier la logique de collision pour qu'elle s'applique aux vrais objets `PieceEchec` du serveur (et non aux `PieceData`).
+        2.  Ajouter un cooldown pour éviter les collisions multiples.
+        3.  Après la mise à jour de l'état, créer une liste de `PieceData` à partir de la liste de pièces du serveur.
+        4.  Envoyer cette liste à tous les clients via un message `UpdatePieces`.
+
+### Étape 3 : Le client reçoit et affiche les pièces
+
+-   [x] **Mettre à jour le client réseau (`ClientReseau.cs`)**
+    -   Ajouter un événement `OnPiecesUpdate` qui se déclenche à la réception d'un message `UpdatePieces`.
+
+-   [x] **Mettre à jour le gestionnaire de pièces client**
+    -   Dans `pong_echec/Game/GestionnairePiece.cs`, supprimer la logique d'initialisation des pièces.
+    -   Ajouter une méthode `UpdatePieces(List<PieceData> piecesData)` qui vide la liste actuelle et la recrée à partir des données reçues du serveur.
+
+-   [x] **Afficher les pièces dans l'interface utilisateur (`MainForm.cs`)**
+    -   S'abonner à l'événement `clientReseau.OnPiecesUpdate`.
+    -   Dans le gestionnaire d'événements, appeler `gestionnairePieces.UpdatePieces()` avec les données reçues.
+    -   Dans la méthode `OnPaint`, appeler `gestionnairePieces.Draw()` pour dessiner les pièces.
+
+### Étape 4 : Implémenter le système "Prêt"
+
+-   [x] **Étendre le protocole de communication**
+    -   Dans `pong_shared`, ajouter un état de jeu `GameStateType` (`WaitingForPlayers`, `InProgress`).
+    -   Dans `MessageReseau`, ajouter les types `PlayerReady` et `UpdateGameState`.
+
+-   [x] **Logique côté serveur**
+    -   Dans `pong_serveur/Program.cs`, ajouter une variable pour l'état du jeu (`currentGameState`).
+    -   Ajouter une propriété `IsReady` dans `ClientInfo`.
+    -   Gérer le message `PlayerReady` : marquer le joueur comme prêt et vérifier si tous les joueurs le sont.
+    -   Si tout le monde est prêt, passer l'état du jeu à `InProgress` et notifier tous les clients.
+    -   Dans la `GameLoop`, ne mettre à jour la logique de jeu (balle, collisions) que si l'état est `InProgress`.
+
+-   [x] **Logique côté client**
+    -   Dans `pong_echec/UI/MainForm.cs`, ajouter un bouton "Prêt" et un label de statut.
+    -   Au clic sur le bouton, envoyer le message `PlayerReady` au serveur.
+    -   Gérer le message `UpdateGameState` pour mettre à jour l'interface (cacher le bouton "Prêt", afficher "En attente...", etc.).
+    -   Conditionner le dessin du jeu et les contrôles du joueur à l'état `InProgress`.

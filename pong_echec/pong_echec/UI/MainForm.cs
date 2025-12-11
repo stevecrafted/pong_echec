@@ -9,8 +9,7 @@ using System.Windows.Forms;
 namespace pong_echec.UI
 {
     public partial class MainForm : Form
-    {
-        private Panel panelJeu;
+    { 
         ConfigurationJeu configurationJeu;
         Terrain terrain;
         Ball ball;
@@ -53,7 +52,7 @@ namespace pong_echec.UI
             this.KeyPreview = true;
 
             this.MouseClick += PanelJeu_MouseClick;
-            
+
             terrain = new Terrain(configurationJeu.TerrainWidth, configurationJeu.TerrainHeight);
             ball = new Ball(configurationJeu.BallStartX, configurationJeu.BallStartY);
             gestionnairePieces = new GestionnairePieces(terrain);
@@ -286,12 +285,14 @@ namespace pong_echec.UI
         {
             if (monJoueurId == 1 && currentGameState == GameStateType.InProgress && !balleActive)
             {
+                // Calculer la direction depuis la balle vers le clic
                 int dx = e.X - ball.PosX;
                 int dy = e.Y - ball.PosY;
                 
                 double distance = Math.Sqrt(dx * dx + dy * dy);
                 if (distance > 0)
                 {
+                    // Normaliser et multiplier par la vitesse de base (5)
                     int speedX = (int)((dx / distance) * 5);
                     int speedY = (int)((dy / distance) * 5);
                     
@@ -343,7 +344,15 @@ namespace pong_echec.UI
                 }
             }
 
-            Invalidate();
+            // Forcer le redessin pour afficher la flèche en temps réel
+            if (monJoueurId == 1 && currentGameState == GameStateType.InProgress && !balleActive)
+            {
+                Invalidate();
+            }
+            else
+            {
+                Invalidate();
+            }
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -361,6 +370,15 @@ namespace pong_echec.UI
                 
                 if (monJoueurId == 1 && !balleActive)
                 {
+                    // Dessiner une flèche de la balle vers la souris
+                    Point mousePos = this.PointToClient(Cursor.Position);
+                    using (Pen arrowPen = new Pen(Color.Cyan, 3))
+                    {
+                        arrowPen.CustomEndCap = new System.Drawing.Drawing2D.AdjustableArrowCap(5, 5);
+                        e.Graphics.DrawLine(arrowPen, ball.PosX, ball.PosY, mousePos.X, mousePos.Y);
+                    }
+                    
+                    // Cercle pulsant
                     using (Pen pen = new Pen(Color.Yellow, 3))
                     {
                         pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Dash;
@@ -370,7 +388,7 @@ namespace pong_echec.UI
                             40, 40);
                     }
                     
-                    string text = "Cliquez pour lancer la balle!";
+                    string text = "Cliquez pour choisir la direction!";
                     Font font = new Font("Arial", 20, FontStyle.Bold);
                     SizeF textSize = e.Graphics.MeasureString(text, font);
 
@@ -385,7 +403,7 @@ namespace pong_echec.UI
                     e.Graphics.DrawString(
                         text,
                         font,
-                        Brushes.Yellow,
+                        Brushes.Cyan,
                         (this.ClientSize.Width - textSize.Width) / 2,
                         45
                     );

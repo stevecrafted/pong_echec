@@ -29,7 +29,7 @@ namespace pong_serveur
         // Variables pour éviter les collisions multiples
         private static int dernierJoueurTouche = 0;
         private static int framesSansCollision = 0;
-        private const int FRAMES_COOLDOWN = 10;
+        private const int FRAMES_COOLDOWN = 5;
         private static int TERRAIN_WIDTH = 900;
         private static int TERRAIN_HEIGHT = 900;
 
@@ -106,6 +106,7 @@ namespace pong_serveur
                 {
                     int ancienPosY = ballPosY;
                     int ancienPosX = ballPosX;
+
                     ballPosX += ballSpeedX;
                     ballPosY += ballSpeedY;
 
@@ -117,6 +118,7 @@ namespace pong_serveur
                     framesSansCollision++;
 
                     VerifierCollisionsRaquettes(ancienPosY);
+                    
                     await VerifierCollisionPiece(ancienPosY, ancienPosX);
                 }
                 
