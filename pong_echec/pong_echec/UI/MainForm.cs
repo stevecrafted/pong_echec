@@ -46,7 +46,7 @@ namespace pong_echec.UI
 
             // 3. INITIALISER LE JEU AVEC LA CONFIG
             configurationJeu = ConfigurationJeu.ObtenirConfiguration(nombrePiece);
-
+            
             InitializeComponent(configurationJeu);
             this.DoubleBuffered = true;
             this.KeyPreview = true;

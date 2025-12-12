@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence xmlns="https://jakarta.ee/xml/ns/persistence"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence 
+                        https://jakarta.ee/xml/ns/persistence/persistence_3_0.xsd"
+    version="3.0">
+    
+    <persistence-unit name="banquePU" transaction-type="JTA">
+        <jta-data-source>java:jboss/datasources/PostgresDS</jta-data-source>
+        
+        <class>com.banque.compte.entity.PieceConfig</class>
+        
+        <properties>
+            <!-- Génération automatique du schéma -->
+            <property name="jakarta.persistence.schema-generation.database.action" value="update" />
+            
+            <!-- Affichage SQL pour debug -->
+            <property name="hibernate.show_sql" value="true" />
+            <property name="hibernate.format_sql" value="true" />
+            
+            <!-- Dialecte PostgreSQL -->
+            <property name="hibernate.dialect" value="org.hibernate.dialect.PostgreSQLDialect" />
+            
+            <!-- Log des requêtes -->
+            <property name="hibernate.use_sql_comments" value="true" />
+        </properties>
+    </persistence-unit>
+</persistence>

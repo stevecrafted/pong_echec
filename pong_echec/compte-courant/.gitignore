@@ -1,0 +1,55 @@
+### Java ###
+*.class
+*.log
+*.ctxt
+*.jar
+*.war
+*.ear
+hs_err_pid*
+
+### Maven ###
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+### Gradle (si applicable) ###
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+### IDEs ###
+# IntelliJ IDEA
+.idea/
+*.iml
+out/
+
+# Eclipse
+.project
+.classpath
+.settings/
+bin/
+
+# VS Code
+.vscode/
+
+### OS-specific ###
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+### Spring Boot ###
+# application secrets (ne jamais versionner)
+application-*.yml
+application-*.properties
+.env
+
+### Logs and temporary files ###
+logs/
+*.log
+tmp/

@@ -1,5 +1,5 @@
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using pong_shared.Models;
 
 namespace pong_serveur.Game
@@ -8,158 +8,72 @@ namespace pong_serveur.Game
     {
         private List<PieceEchec> pieces;
         private Terrain terrain;
+        private PieceConfig config; 
 
         public IReadOnlyList<PieceEchec> Pieces => pieces.AsReadOnly();
 
-        public GestionnairePieces(Terrain terrain)
+        public GestionnairePieces(Terrain terrain, PieceConfig config)
         {
-            this.terrain = terrain;
+            this.terrain = terrain ?? throw new ArgumentNullException(nameof(terrain));
+            this.config = config ?? throw new ArgumentNullException(nameof(config));
             pieces = new List<PieceEchec>();
         }
 
         public void InitialiserPieces(int nombrePiece)
         {
+            if (nombrePiece <= 0 || nombrePiece > 8)
+                throw new ArgumentException("Le nombre de pièces doit être entre 1 et 8.");
+
+            if (config.VieParType == null || config.VieParType.Count == 0)
+                throw new InvalidOperationException("La configuration des pièces n'est pas chargée.");
+
             pieces.Clear();
-            AjouterPiecesJoueur1(nombrePiece);
-            AjouterPiecesJoueur2(nombrePiece);
+
+            AjouterPiecesPourJoueur(1, nombrePiece, 10, 10);
+            AjouterPiecesPourJoueur(2, nombrePiece, 10, terrain.Height - 110);
+
+            Console.WriteLine($"✓ {pieces.Count} pièces initialisées ({nombrePiece} par joueur)");
         }
-        private void AjouterPiecesJoueur1(int nombrePiece)
+
+        private void AjouterPiecesPourJoueur(int joueur, int nombrePiece, int startX, int startY)
         {
             int spacing = 110;
-            int startX = 10;
-            int startY = 10;
-            int pawnY = startY + 110;
+            int pawnY = (joueur == 1) ? startY + 110 : startY - 110;
 
-            // ---- Deux modes : Symmetric (chess-like) ou Left-packed (custom) ----
-            bool useSymmetricOrder = true; // <-- true = Option B (recommandé), false = Option A
+            // ➜ On prend juste l’ordre classique des échecs
+            var ordre = PieceConfig.OrdreEchecs;
 
-            // Ordre complet (classique échiquier, indices 0..7)
-            var fullOrder = new List<(TypePiece type, int vie)>
+            // ➜ On ne prend que nombrePiece premiers
+            var liste = ordre.GetRange(0, nombrePiece);
+
+            // --- Pièces principales ---
+            for (int i = 0; i < liste.Count; i++)
             {
-                (TypePiece.Tour, 5),      // 0
-                (TypePiece.Cavalier, 4),  // 1
-                (TypePiece.Fou, 3),       // 2
-                (TypePiece.Reine, 6),     // 3
-                (TypePiece.Roi, 5),       // 4
-                (TypePiece.Fou, 3),       // 5
-                (TypePiece.Cavalier, 4),  // 6
-                (TypePiece.Tour, 5)       // 7
-            };
+                TypePiece type = liste[i];
+                int vie = config.ObtenirVie(type);
 
-            List<(TypePiece type, int vie)> displayOrder;
-
-            if (useSymmetricOrder)
-            {
-                // Option B: prendre la "fenêtre centrale" de taille nombrePiece puis compresser à gauche
-                // Centre indices : middle window of fullOrder with length nombrePiece
-                int total = fullOrder.Count;
-                if (nombrePiece >= total)
-                {
-                    displayOrder = new List<(TypePiece, int)>(fullOrder);
-                }
-                else
-                {
-                    // start index to get a centered window of size nombrePiece
-                    int start = (total - nombrePiece) / 2;
-                    displayOrder = fullOrder.Skip(start).Take(nombrePiece).ToList();
-                }
-            }
-            else
-            {
-                // Option A: ordre custom left-packed demandé précédemment
-                displayOrder = new List<(TypePiece type, int vie)>
-                {
-                    (TypePiece.Reine, 6),     // 0
-                    (TypePiece.Roi, 5),       // 1
-                    (TypePiece.Fou, 3),       // 2
-                    (TypePiece.Fou, 3),       // 3
-                    (TypePiece.Cavalier, 4),  // 4
-                    (TypePiece.Cavalier, 4),  // 5
-                    (TypePiece.Tour, 5),      // 6
-                    (TypePiece.Tour, 5)       // 7
-                }.Take(nombrePiece).ToList();
+                pieces.Add(new PieceEchec(
+                    startX + i * spacing,
+                    startY,
+                    joueur,
+                    type,
+                    vie
+                ));
             }
 
-            // Ajouter les pièces principales en colonnes 0..(nombrePiece-1)
-            for (int i = 0; i < displayOrder.Count; i++)
-            {
-                var p = displayOrder[i];
-                int col = i; // compression à gauche (col 0..)
-                pieces.Add(new PieceEchec(startX + col * spacing, startY, 1, p.type, p.vie));
-            }
+            // --- Pions associés ---
+            int viePion = config.ObtenirVie(TypePiece.Pion);
 
-            // Ajouter les pions alignés sous ces mêmes colonnes
-            for (int i = 0; i < displayOrder.Count; i++)
+            for (int i = 0; i < liste.Count; i++)
             {
-                int col = i;
-                pieces.Add(new PieceEchec(startX + col * spacing, pawnY, 1, TypePiece.Pion, 2));
+                pieces.Add(new PieceEchec(
+                    startX + i * spacing,
+                    pawnY,
+                    joueur,
+                    TypePiece.Pion,
+                    viePion
+                ));
             }
         }
-
-        private void AjouterPiecesJoueur2(int nombrePiece)
-        {
-            int spacing = 110;
-            int startX = 10;
-            int startY = terrain.Height - 110;
-            int pawnY = startY - 110;
-
-            bool useSymmetricOrder = true; // synchronisé avec joueur1
-
-            var fullOrder = new List<(TypePiece type, int vie)>
-    {
-        (TypePiece.Tour, 5),
-        (TypePiece.Cavalier, 4),
-        (TypePiece.Fou, 3),
-        (TypePiece.Reine, 6),
-        (TypePiece.Roi, 5),
-        (TypePiece.Fou, 3),
-        (TypePiece.Cavalier, 4),
-        (TypePiece.Tour, 5)
-    };
-
-            List<(TypePiece type, int vie)> displayOrder;
-
-            if (useSymmetricOrder)
-            {
-                int total = fullOrder.Count;
-                if (nombrePiece >= total)
-                {
-                    displayOrder = new List<(TypePiece, int)>(fullOrder);
-                }
-                else
-                {
-                    int start = (total - nombrePiece) / 2;
-                    displayOrder = fullOrder.Skip(start).Take(nombrePiece).ToList();
-                }
-            }
-            else
-            {
-                displayOrder = new List<(TypePiece type, int vie)>
-        {
-            (TypePiece.Reine, 6),
-            (TypePiece.Roi, 5),
-            (TypePiece.Fou, 3),
-            (TypePiece.Fou, 3),
-            (TypePiece.Cavalier, 4),
-            (TypePiece.Cavalier, 4),
-            (TypePiece.Tour, 5),
-            (TypePiece.Tour, 5)
-        }.Take(nombrePiece).ToList();
-            }
-
-            for (int i = 0; i < displayOrder.Count; i++)
-            {
-                var p = displayOrder[i];
-                int col = i;
-                pieces.Add(new PieceEchec(startX + col * spacing, startY, 2, p.type, p.vie));
-            }
-
-            for (int i = 0; i < displayOrder.Count; i++)
-            {
-                int col = i;
-                pieces.Add(new PieceEchec(startX + col * spacing, pawnY, 2, TypePiece.Pion, 2));
-            }
-        }
-
     }
 }

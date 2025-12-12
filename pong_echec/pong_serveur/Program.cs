@@ -13,6 +13,7 @@ namespace pong_serveur
     class Program
     {
         private static GestionnairePieces gestionnairePieces;
+        private static PieceConfig pieceConfig;
         private static bool balleLancee = false;
         private static List<ClientInfo> clients = new List<ClientInfo>();
         private static object lockClients = new object();
@@ -33,12 +34,13 @@ namespace pong_serveur
         private static int TERRAIN_WIDTH = 900;
         private static int TERRAIN_HEIGHT = 900;
 
-        public static void InitialiserJeu(int nbPieces)
+        public async static Task InitialiserJeu(int nbPieces)
         {
-            ConfigurationJeu configurationJeu = ConfigurationJeu.ObtenirConfiguration(nbPieces);
+            ConfigurationJeu configurationJeu = ConfigurationJeu.ObtenirConfiguration(nbPieces); 
+            pieceConfig = await PieceConfig.CreerAsync();
 
             Terrain terrain = new Terrain(TERRAIN_WIDTH, TERRAIN_HEIGHT);
-            gestionnairePieces = new GestionnairePieces(terrain);
+            gestionnairePieces = new GestionnairePieces(terrain, pieceConfig);
             gestionnairePieces.InitialiserPieces(nbPieces);
 
             TERRAIN_WIDTH = configurationJeu.TerrainWidth;
@@ -53,6 +55,7 @@ namespace pong_serveur
             Console.WriteLine($"Jeu initialisé avec {nbPieces} pièces");
             Console.WriteLine($"Terrain: {TERRAIN_WIDTH}x{TERRAIN_HEIGHT}");
             Console.WriteLine($"Balle départ: ({ballPosX}, {ballPosY})");
+            Console.WriteLine($"Pièces créées: {gestionnairePieces.Pieces.Count}");
         }
 
         static async Task Main(string[] args)
@@ -87,7 +90,7 @@ namespace pong_serveur
                 await EnvoyerAUnClient(client, msgAssignation);
                 var msgGameState = MessageReseau.CreerUpdateGameState(currentGameState);
                 await EnvoyerAUnClient(client, msgGameState);
-                
+
                 // NOUVEAU : Envoyer l'état initial de la balle
                 var msgBallActive = MessageReseau.CreerBallActiveChange(balleLancee);
                 await EnvoyerAUnClient(client, msgBallActive);
@@ -118,25 +121,29 @@ namespace pong_serveur
                     framesSansCollision++;
 
                     VerifierCollisionsRaquettes(ancienPosY);
-                    
+
                     await VerifierCollisionPiece(ancienPosY, ancienPosX);
                 }
-                
+
                 var messageBalle = MessageReseau.CreerUpdateBall(ballPosX, ballPosY, ballSpeedX, ballSpeedY);
                 await EnvoyerATousLesClients(messageBalle);
 
-                var piecesData = gestionnairePieces.Pieces.Select(p => new PieceData
+                // Envoyer les pièces seulement si le gestionnaire est initialisé
+                if (gestionnairePieces != null)
                 {
-                    PosX = p.PosX,
-                    PosY = p.PosY,
-                    JoueurIdMaitre = p.JoueurIdMaitre,
-                    Type = p.Type,
-                    Vie = p.Vie,
-                    VieMax = p.VieMax,
-                    EstVivant = p.EstVivant
-                }).ToList();
-                var messagePieces = MessageReseau.CreerUpdatePieces(piecesData);
-                await EnvoyerATousLesClients(messagePieces);
+                    var piecesData = gestionnairePieces.Pieces.Select(p => new PieceData
+                    {
+                        PosX = p.PosX,
+                        PosY = p.PosY,
+                        JoueurIdMaitre = p.JoueurIdMaitre,
+                        Type = p.Type,
+                        Vie = p.Vie,
+                        VieMax = p.VieMax,
+                        EstVivant = p.EstVivant
+                    }).ToList();
+                    var messagePieces = MessageReseau.CreerUpdatePieces(piecesData);
+                    await EnvoyerATousLesClients(messagePieces);
+                }
 
                 await Task.Delay(16);
             }
@@ -353,11 +360,11 @@ namespace pong_serveur
                         ballSpeedX = direction.SpeedX;
                         ballSpeedY = direction.SpeedY;
                         balleLancee = true;
-                        
+
                         // NOUVEAU : Notifier tous les clients que la balle est active
                         var msgBallActive = MessageReseau.CreerBallActiveChange(true);
                         await EnvoyerATousLesClients(msgBallActive);
-                        
+
                         Console.WriteLine($"Joueur 1 lance la balle: ({ballSpeedX}, {ballSpeedY})");
                     }
                     break;
@@ -368,14 +375,30 @@ namespace pong_serveur
                     if (gestionnairePieces == null)
                     {
                         Console.WriteLine($"📋 Configuration reçue: {nombrePieces} pièces");
-                        InitialiserJeu(nombrePieces);
-
-                        _ = Task.Run(GameLoop);
+                        await InitialiserJeu(nombrePieces);
 
                         Console.WriteLine("✅ Jeu initialisé et prêt!");
+                        
+                        // Envoyer immédiatement l'état des pièces aux clients connectés
+                        if (gestionnairePieces != null)
+                        {
+                            var piecesData = gestionnairePieces.Pieces.Select(p => new PieceData
+                            {
+                                PosX = p.PosX,
+                                PosY = p.PosY,
+                                JoueurIdMaitre = p.JoueurIdMaitre,
+                                Type = p.Type,
+                                Vie = p.Vie,
+                                VieMax = p.VieMax,
+                                EstVivant = p.EstVivant
+                            }).ToList();
+                            var messagePieces = MessageReseau.CreerUpdatePieces(piecesData);
+                            await EnvoyerATousLesClients(messagePieces);
+                            Console.WriteLine($"📤 État des pièces envoyé: {piecesData.Count} pièces");
+                        }
                     }
                     break;
-                    
+
                 case TypeMessage.UpdateRaquette:
                     var raquetteData = message.ExtraireDataRaquette();
                     if (raquetteData != null)
@@ -414,7 +437,7 @@ namespace pong_serveur
                     {
                         Console.WriteLine("Tous les joueurs sont prêts! La partie commence.");
                         await SetGameState(GameStateType.InProgress);
-                        
+
                         // NOUVEAU : Réinitialiser l'état de la balle pour la nouvelle partie
                         balleLancee = false;
                         var msgBallActive = MessageReseau.CreerBallActiveChange(false);
