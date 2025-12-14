@@ -20,6 +20,11 @@ namespace pong_serveur
         private static int prochainJoueurId = 1;
         private static GameStateType currentGameState = GameStateType.WaitingForPlayers;
 
+        private static int raquette1X;
+        private static int raquette1Y;
+        private static int raquette2X;
+        private static int raquette2Y;
+
         // État de la balle (autorité du serveur)
         private static int ballPosX = 400;
         private static int ballPosY = 300;
@@ -36,7 +41,7 @@ namespace pong_serveur
 
         public async static Task InitialiserJeu(int nbPieces)
         {
-            ConfigurationJeu configurationJeu = ConfigurationJeu.ObtenirConfiguration(nbPieces); 
+            ConfigurationJeu configurationJeu = ConfigurationJeu.ObtenirConfiguration(nbPieces);
             pieceConfig = await PieceConfig.CreerAsync();
 
             Terrain terrain = new Terrain(TERRAIN_WIDTH, TERRAIN_HEIGHT);
@@ -66,38 +71,49 @@ namespace pong_serveur
             TcpListener serveur = new TcpListener(IPAddress.Any, 5000);
             serveur.Start();
             Console.WriteLine("Serveur en écoute sur le port 5000");
-
-            _ = Task.Run(GameLoop);
-
-            while (true)
+            try
             {
-                TcpClient client = await serveur.AcceptTcpClientAsync();
+                // Charger l'état du jeu depuis l'EJB
 
-                int joueurId;
-                lock (lockClients)
+
+                _ = Task.Run(GameLoop);
+
+                while (true)
                 {
-                    joueurId = prochainJoueurId;
-                    prochainJoueurId++;
-                    if (prochainJoueurId > 2) prochainJoueurId = 1;
+                    TcpClient client = await serveur.AcceptTcpClientAsync();
 
-                    ClientInfo clientInfo = new ClientInfo(client, joueurId);
-                    clients.Add(clientInfo);
+                    int joueurId;
+                    lock (lockClients)
+                    {
+                        joueurId = prochainJoueurId;
+                        prochainJoueurId++;
+                        if (prochainJoueurId > 2) prochainJoueurId = 1;
 
-                    Console.WriteLine($"Nouveau client connecté: {client.Client.RemoteEndPoint} - Joueur {joueurId}");
+                        ClientInfo clientInfo = new ClientInfo(client, joueurId);
+                        clients.Add(clientInfo);
+
+                        Console.WriteLine($"Nouveau client connecté: {client.Client.RemoteEndPoint} - Joueur {joueurId}");
+                    }
+
+                    var msgAssignation = MessageReseau.CreerAssignerJoueur(joueurId);
+                    await EnvoyerAUnClient(client, msgAssignation);
+                    var msgGameState = MessageReseau.CreerUpdateGameState(currentGameState);
+                    await EnvoyerAUnClient(client, msgGameState);
+
+                    // NOUVEAU : Envoyer l'état initial de la balle
+                    var msgBallActive = MessageReseau.CreerBallActiveChange(balleLancee);
+                    await EnvoyerAUnClient(client, msgBallActive);
+
+                    Console.WriteLine("Envoi au client de son assignation réussi");
+
+                    _ = Task.Run(() => GererClient(client, joueurId));
                 }
-
-                var msgAssignation = MessageReseau.CreerAssignerJoueur(joueurId);
-                await EnvoyerAUnClient(client, msgAssignation);
-                var msgGameState = MessageReseau.CreerUpdateGameState(currentGameState);
-                await EnvoyerAUnClient(client, msgGameState);
-
-                // NOUVEAU : Envoyer l'état initial de la balle
-                var msgBallActive = MessageReseau.CreerBallActiveChange(balleLancee);
-                await EnvoyerAUnClient(client, msgBallActive);
-
-                Console.WriteLine("Envoi au client de son assignation réussi");
-
-                _ = Task.Run(() => GererClient(client, joueurId));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\n❌ Erreur fatale: {ex.Message}");
+                Console.WriteLine("Appuyez sur une touche pour quitter...");
+                Console.ReadKey();
             }
         }
 
@@ -346,7 +362,16 @@ namespace pong_serveur
                 }
                 client.Close();
                 Console.WriteLine($"Joueur {joueurId} déconnecté");
+
+                // Sauvegarder l'état du jeu à la déconnexion
+                if (clients.Count == 0 && gestionnairePieces != null)
+                {
+                    Console.WriteLine("💾 Tous les joueurs déconnectés, sauvegarde de l'état...");
+                    await SauvegarderEtatAsync();
+                    Console.WriteLine("✅ État sauvegardé!");
+                }
             }
+            
         }
 
         static async Task TraiterMessage(MessageReseau message, int joueurId)
@@ -375,10 +400,12 @@ namespace pong_serveur
                     if (gestionnairePieces == null)
                     {
                         Console.WriteLine($"📋 Configuration reçue: {nombrePieces} pièces");
+                        // await ChargerEtatJeuAsync();
+
                         await InitialiserJeu(nombrePieces);
 
                         Console.WriteLine("✅ Jeu initialisé et prêt!");
-                        
+
                         // Envoyer immédiatement l'état des pièces aux clients connectés
                         if (gestionnairePieces != null)
                         {
@@ -396,6 +423,30 @@ namespace pong_serveur
                             await EnvoyerATousLesClients(messagePieces);
                             Console.WriteLine($"📤 État des pièces envoyé: {piecesData.Count} pièces");
                         }
+                    }
+                    break;
+
+                case TypeMessage.ChargerDernierePartie:
+                    Console.WriteLine("📥 Demande de chargement de la dernière partie...");
+                    await ChargerEtatJeuAsync();
+                    Console.WriteLine("✅ Dernière partie chargée!");
+
+                    // Envoyer l'état des pièces à tous les clients
+                    if (gestionnairePieces != null)
+                    {
+                        var piecesData = gestionnairePieces.Pieces.Select(p => new PieceData
+                        {
+                            PosX = p.PosX,
+                            PosY = p.PosY,
+                            JoueurIdMaitre = p.JoueurIdMaitre,
+                            Type = p.Type,
+                            Vie = p.Vie,
+                            VieMax = p.VieMax,
+                            EstVivant = p.EstVivant
+                        }).ToList();
+                        var messagePieces = MessageReseau.CreerUpdatePieces(piecesData);
+                        await EnvoyerATousLesClients(messagePieces);
+                        Console.WriteLine($"📤 État des pièces envoyé: {piecesData.Count} pièces");
                     }
                     break;
 
@@ -447,11 +498,223 @@ namespace pong_serveur
             }
         }
 
+        public static async Task ChargerEtatJeuAsync()
+        {
+            Console.WriteLine("═══════════════════════════════════════");
+            Console.WriteLine("  Chargement de l'état persistant");
+            Console.WriteLine("═══════════════════════════════════════\n");
+
+            GameStateDTO state = null;
+
+            try
+            {
+                // 1. Charger l'état depuis l'EJB
+                Console.WriteLine("Étape 1/4 : Chargement de l'état depuis l'EJB...");
+                state = await GameStateClient.ChargerEtatAsync();
+                Console.WriteLine("✓ État chargé\n");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠️ Impossible de charger l'état: {ex.Message}");
+                Console.WriteLine("   Création d'un nouvel état par défaut\n");
+            }
+
+            // 2. Charger la configuration des pièces
+            Console.WriteLine("Étape 2/4 : Chargement de la config des pièces...");
+            try
+            {
+                pieceConfig = await PieceConfig.CreerAsync();
+            }
+            catch
+            {
+                Console.WriteLine("⚠️ API config indisponible, valeurs hardcodées utilisées");
+            }
+            pieceConfig.AfficherConfiguration();
+
+            // 3. Configurer le terrain
+            Console.WriteLine("Étape 3/4 : Configuration du terrain...");
+            ConfigurationJeu configJeu = ConfigurationJeu.ObtenirConfiguration(state.NombrePieces);
+            TERRAIN_WIDTH = configJeu.TerrainWidth;
+            TERRAIN_HEIGHT = configJeu.TerrainHeight;
+            Console.WriteLine($"  Terrain: {TERRAIN_WIDTH}x{TERRAIN_HEIGHT}\n");
+
+            // 4. Initialiser les pièces avec les vies de l'EJB
+            Console.WriteLine("Étape 4/4 : Initialisation des pièces...");
+            Terrain terrain = new Terrain(TERRAIN_WIDTH, TERRAIN_HEIGHT);
+            gestionnairePieces = new GestionnairePieces(terrain, pieceConfig);
+            
+            // Passer les vies personnalisées depuis l'EJB si disponibles
+            gestionnairePieces.InitialiserPieces(state.NombrePieces, state.ViesPieces);
+            
+            // 5. Restaurer l'état de la balle et des raquettes
+            RestaurerEtat(state);
+
+            Console.WriteLine("\n═══════════════════════════════════════");
+            Console.WriteLine("  Résumé de la configuration");
+            Console.WriteLine("═══════════════════════════════════════");
+            Console.WriteLine($"  • Terrain        : {TERRAIN_WIDTH}x{TERRAIN_HEIGHT}");
+            Console.WriteLine($"  • Pièces/joueur  : {state.NombrePieces}");
+            Console.WriteLine($"  • Total pièces   : {gestionnairePieces.Pieces.Count}");
+            Console.WriteLine($"  • Balle position : ({ballPosX}, {ballPosY})");
+            Console.WriteLine($"  • Balle lancée   : {(balleLancee ? "Oui" : "Non")}");
+            Console.WriteLine($"  • Raquette J1    : ({raquette1X}, {raquette1Y})");
+            Console.WriteLine($"  • Raquette J2    : ({raquette2X}, {raquette2Y})");
+            
+            if (state.ViesPieces != null && state.ViesPieces.Count > 0)
+            {
+                Console.WriteLine("  • Vies des pièces (depuis EJB):");
+                foreach (var kvp in state.ViesPieces)
+                {
+                    Console.WriteLine($"    - {kvp.Key}: {kvp.Value} PV");
+                }
+            }
+            Console.WriteLine("═══════════════════════════════════════\n");
+        }
+
         static async Task SetGameState(GameStateType newState)
         {
             currentGameState = newState;
             var gameStateMessage = MessageReseau.CreerUpdateGameState(currentGameState);
             await EnvoyerATousLesClients(gameStateMessage);
+        }
+
+        private static void RestaurerEtat(GameStateDTO state)
+        {
+            ballPosX = state.BallX;
+            ballPosY = state.BallY;
+            ballSpeedX = state.BallSpeedX;
+            ballSpeedY = state.BallSpeedY;
+            balleLancee = state.BalleLancee;
+
+            raquette1X = state.Raquette1X;
+            raquette1Y = state.Raquette1Y;
+            raquette2X = state.Raquette2X;
+            raquette2Y = state.Raquette2Y;
+
+            Console.WriteLine("✓ État local restauré");
+        }
+
+        /// <summary>
+        /// Sauvegarde l'état actuel du jeu dans l'EJB
+        /// À appeler périodiquement ou à chaque changement important
+        /// </summary>
+        public static async Task SauvegarderEtatAsync()
+        {
+            // Collecter les vies actuelles des pièces depuis pieceConfig
+            Dictionary<string, int> viesActuelles = null;
+            if (pieceConfig != null && pieceConfig.VieParType != null)
+            {
+                viesActuelles = new Dictionary<string, int>();
+                foreach (var kvp in pieceConfig.VieParType)
+                {
+                    viesActuelles[kvp.Key.ToString()] = kvp.Value;
+                }
+            }
+
+            var state = new GameStateDTO
+            {
+                NombrePieces = gestionnairePieces?.Pieces.Count / 2 ?? 4,
+                BallX = ballPosX,
+                BallY = ballPosY,
+                BallSpeedX = ballSpeedX,
+                BallSpeedY = ballSpeedY,
+                BalleLancee = balleLancee,
+                Raquette1X = raquette1X,
+                Raquette1Y = raquette1Y,
+                Raquette2X = raquette2X,
+                Raquette2Y = raquette2Y,
+                ViesPieces = viesActuelles
+            };
+
+            await GameStateClient.SauvegarderEtatAsync(state);
+        }
+
+        /// <summary>
+        /// Réinitialise complètement le jeu
+        /// </summary>
+        public static async Task ReinitialiserJeuAsync(int nombrePieces)
+        {
+            Console.WriteLine($"\n🔄 Réinitialisation du jeu avec {nombrePieces} pièces...\n");
+
+            try
+            {
+                // Réinitialiser dans l'EJB
+                await GameStateClient.ReinitialiserJeuAsync(nombrePieces);
+
+                // Recharger tout
+                await ChargerEtatJeuAsync();
+
+                Console.WriteLine("✓ Jeu réinitialisé avec succès\n");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Erreur lors de la réinitialisation: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Met à jour la balle (à appeler dans votre boucle de jeu)
+        /// </summary>
+        public static async Task MettreAJourBalleAsync(int newX, int newY, int newSpeedX, int newSpeedY)
+        {
+            ballPosX = newX;
+            ballPosY = newY;
+            ballSpeedX = newSpeedX;
+            ballSpeedY = newSpeedY;
+
+            // Sauvegarder dans l'EJB (optionnel, peut être fait moins souvent)
+            // await GameStateClient.MettreAJourBalleAsync(newX, newY, newSpeedX, newSpeedY);
+        }
+
+        /// <summary>
+        /// Lance la balle
+        /// </summary>
+        public static async Task LancerBalleAsync(int speedX, int speedY)
+        {
+            balleLancee = true;
+            ballSpeedX = speedX;
+            ballSpeedY = speedY;
+
+            // Notifier l'EJB
+            await GameStateClient.LancerBalleAsync(speedX, speedY);
+
+            Console.WriteLine($"🎾 Balle lancée avec vitesse ({speedX}, {speedY})");
+        }
+
+        /// <summary>
+        /// Met à jour la position d'une raquette
+        /// </summary>
+        public static async Task MettreAJourRaquetteAsync(int joueur, int x, int y)
+        {
+            if (joueur == 1)
+            {
+                raquette1X = x;
+                raquette1Y = y;
+            }
+            else if (joueur == 2)
+            {
+                raquette2X = x;
+                raquette2Y = y;
+            }
+
+            // Sauvegarder dans l'EJB (peut être fait moins souvent)
+            // await GameStateClient.MettreAJourRaquetteAsync(joueur, x, y);
+        }
+
+        /// <summary>
+        /// Sauvegarde périodique (à appeler toutes les X secondes)
+        /// </summary>
+        public static async Task SauvegardePeriodiqueAsync()
+        {
+            try
+            {
+                await SauvegarderEtatAsync();
+                Console.WriteLine($"💾 Sauvegarde auto: {DateTime.Now:HH:mm:ss}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠️ Échec sauvegarde auto: {ex.Message}");
+            }
         }
     }
 }

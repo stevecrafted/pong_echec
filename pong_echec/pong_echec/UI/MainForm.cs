@@ -43,6 +43,7 @@ namespace pong_echec.UI
             int nombrePiece = configForm.NombrePiecesChoisi;
             string adresseServeur = configForm.AdresseServeur;
             int port = configForm.Port;
+            bool chargerPartie = configForm.ChargerPartie;
 
             // 3. INITIALISER LE JEU AVEC LA CONFIG
             configurationJeu = ConfigurationJeu.ObtenirConfiguration(nombrePiece);
@@ -81,14 +82,14 @@ namespace pong_echec.UI
             InitialiserUIReady();
 
             // 4. CONNECTER AU SERVEUR
-            InitialiserModeReseauAsync(adresseServeur, port, nombrePiece);
+            InitialiserModeReseauAsync(adresseServeur, port, nombrePiece, chargerPartie);
 
             gameLoop = new System.Windows.Forms.Timer { Interval = 10 };
             gameLoop.Tick += GameLoop_Tick;
             gameLoop.Start();
         }
 
-        private async void InitialiserModeReseauAsync(string adresseServeur, int port, int nombrePieces)
+        private async void InitialiserModeReseauAsync(string adresseServeur, int port, int nombrePieces, bool chargerPartie)
         {
             try
             {
@@ -98,11 +99,22 @@ namespace pong_echec.UI
                 {
                     modeReseau = true;
 
-                    var msgConfig = MessageReseau.CreerConfigurationPartie(nombrePieces);
-                    await clientReseau.EnvoyerMessageAsync(msgConfig);
-
-                    MessageBox.Show($"Connecté au serveur!\n{adresseServeur}:{port}",
-                        "Connexion réussie", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    if (chargerPartie)
+                    {
+                        // Envoyer une demande de chargement de la dernière partie
+                        var msgCharger = MessageReseau.CreerChargerDernierePartie();
+                        await clientReseau.EnvoyerMessageAsync(msgCharger);
+                        MessageBox.Show($"Chargement de la dernière partie...\n{adresseServeur}:{port}",
+                            "Connexion réussie", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    else
+                    {
+                        // Nouvelle partie
+                        var msgConfig = MessageReseau.CreerConfigurationPartie(nombrePieces);
+                        await clientReseau.EnvoyerMessageAsync(msgConfig);
+                        MessageBox.Show($"Nouvelle partie démarrée!\n{adresseServeur}:{port}",
+                            "Connexion réussie", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
                 }
                 else
                 {

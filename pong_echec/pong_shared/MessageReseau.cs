@@ -18,7 +18,8 @@ namespace pong_shared
         PlayerReady,
         UpdateGameState,
         ConfigurationPartie,
-        BallActiveChange  // NOUVEAU
+        BallActiveChange,  // NOUVEAU
+        ChargerDernierePartie  // Charger la partie sauvegardée
     }
 
     // Classe de base pour les messages
@@ -120,6 +121,15 @@ namespace pong_shared
             {
                 Type = TypeMessage.ConfigurationPartie,
                 Data = nombrePieces.ToString()
+            };
+        }
+
+        public static MessageReseau CreerChargerDernierePartie()
+        {
+            return new MessageReseau
+            {
+                Type = TypeMessage.ChargerDernierePartie,
+                Data = string.Empty
             };
         }
 

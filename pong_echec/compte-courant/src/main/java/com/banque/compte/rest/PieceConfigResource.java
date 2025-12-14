@@ -80,4 +80,44 @@ public class PieceConfigResource {
         
         return Response.ok(status).build();
     }
+
+    /**
+     * Récupère toutes les données statiques du jeu
+     * GET /api/config/gamedata
+     */
+    @GET
+    @Path("/gamedata")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getGameData() {
+        try {
+            LOGGER.info("→ Endpoint /gamedata appelé");
+            
+            if (configEJB == null) {
+                LOGGER.severe("✗ EJB non injecté !");
+                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                        .entity("{\"error\": \"EJB non disponible\"}")
+                        .build();
+            }
+            
+            var gameData = configEJB.getGameData();
+            
+            if (gameData == null) {
+                LOGGER.severe("✗ Impossible de récupérer les données de jeu");
+                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                        .entity("{\"error\": \"Données de jeu non disponibles\"}")
+                        .build();
+            }
+            
+            LOGGER.info("✓ Données de jeu retournées avec succès");
+            return Response.ok(gameData).build();
+            
+        } catch (Exception e) {
+            LOGGER.severe("✗ Erreur lors de la récupération des données de jeu: " + e.getMessage());
+            e.printStackTrace();
+            
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("{\"error\": \"" + e.getMessage() + "\"}")
+                    .build();
+        }
+    }
 }

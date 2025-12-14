@@ -19,7 +19,7 @@ namespace pong_serveur.Game
             pieces = new List<PieceEchec>();
         }
 
-        public void InitialiserPieces(int nombrePiece)
+        public void InitialiserPieces(int nombrePiece, Dictionary<string, int> viesPersonnalisees = null)
         {
             if (nombrePiece <= 0 || nombrePiece > 8)
                 throw new ArgumentException("Le nombre de pièces doit être entre 1 et 8.");
@@ -29,18 +29,22 @@ namespace pong_serveur.Game
 
             pieces.Clear();
 
-            AjouterPiecesPourJoueur(1, nombrePiece, 10, 10);
-            AjouterPiecesPourJoueur(2, nombrePiece, 10, terrain.Height - 110);
+            AjouterPiecesPourJoueur(1, nombrePiece, 10, 10, viesPersonnalisees);
+            AjouterPiecesPourJoueur(2, nombrePiece, 10, terrain.Height - 110, viesPersonnalisees);
 
             Console.WriteLine($"✓ {pieces.Count} pièces initialisées ({nombrePiece} par joueur)");
+            if (viesPersonnalisees != null && viesPersonnalisees.Count > 0)
+            {
+                Console.WriteLine("  ℹ️ Vies personnalisées appliquées depuis l'EJB");
+            }
         }
 
-        private void AjouterPiecesPourJoueur(int joueur, int nombrePiece, int startX, int startY)
+        private void AjouterPiecesPourJoueur(int joueur, int nombrePiece, int startX, int startY, Dictionary<string, int> viesPersonnalisees = null)
         {
             int spacing = 110;
             int pawnY = (joueur == 1) ? startY + 110 : startY - 110;
 
-            // ➜ On prend juste l’ordre classique des échecs
+            // ➜ On prend juste l'ordre classique des échecs
             var ordre = PieceConfig.OrdreEchecs;
 
             // ➜ On ne prend que nombrePiece premiers
@@ -50,7 +54,8 @@ namespace pong_serveur.Game
             for (int i = 0; i < liste.Count; i++)
             {
                 TypePiece type = liste[i];
-                int vie = config.ObtenirVie(type);
+                // Utiliser les vies personnalisées si disponibles, sinon utiliser la config par défaut
+                int vie = ObtenirVie(type, viesPersonnalisees);
 
                 pieces.Add(new PieceEchec(
                     startX + i * spacing,
@@ -62,7 +67,7 @@ namespace pong_serveur.Game
             }
 
             // --- Pions associés ---
-            int viePion = config.ObtenirVie(TypePiece.Pion);
+            int viePion = ObtenirVie(TypePiece.Pion, viesPersonnalisees);
 
             for (int i = 0; i < liste.Count; i++)
             {
@@ -74,6 +79,17 @@ namespace pong_serveur.Game
                     viePion
                 ));
             }
+        }
+
+        private int ObtenirVie(TypePiece type, Dictionary<string, int> viesPersonnalisees)
+        {
+            // Si des vies personnalisées sont fournies, les utiliser en priorité
+            if (viesPersonnalisees != null && viesPersonnalisees.ContainsKey(type.ToString()))
+            {
+                return viesPersonnalisees[type.ToString()];
+            }
+            // Sinon, utiliser la configuration par défaut
+            return config.ObtenirVie(type);
         }
     }
 }

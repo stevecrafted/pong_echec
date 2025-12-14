@@ -10,6 +10,7 @@ namespace pong_echec.UI
         public int NombrePiecesChoisi { get; private set; } = 4;
         public string AdresseServeur { get; private set; } = "127.0.0.1";
         public int Port { get; private set; } = 5000;
+        public bool ChargerPartie { get; private set; } = false;
 
         private RadioButton radio2Pieces;
         private RadioButton radio4Pieces;
@@ -18,6 +19,7 @@ namespace pong_echec.UI
         private TextBox txtAdresseServeur;
         private TextBox txtPort;
         private Button btnValider;
+        private Button btnChargerPartie;
         private Panel panelPreview;
 
         public ConfigurationForm()
@@ -138,13 +140,33 @@ namespace pong_echec.UI
             groupReseau.Controls.AddRange(new Control[] { lblServeur, txtAdresseServeur, lblPort, txtPort, lblInfo });
             this.Controls.Add(groupReseau);
 
-            // Bouton valider
+            // Bouton charger partie
+            btnChargerPartie = new Button
+            {
+                Text = "📂 CHARGER DERNIÈRE PARTIE",
+                Location = new Point(50, 415),
+                Size = new Size(250, 50),
+                Font = new Font("Arial", 12, FontStyle.Bold),
+                BackColor = Color.FromArgb(34, 139, 34),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand
+            };
+            btnChargerPartie.FlatAppearance.BorderSize = 0;
+            btnChargerPartie.Click += BtnChargerPartie_Click;
+            this.Controls.Add(btnChargerPartie);
+
+            // Effet hover sur le bouton charger
+            btnChargerPartie.MouseEnter += (s, e) => btnChargerPartie.BackColor = Color.FromArgb(50, 180, 50);
+            btnChargerPartie.MouseLeave += (s, e) => btnChargerPartie.BackColor = Color.FromArgb(34, 139, 34);
+
+            // Bouton nouvelle partie
             btnValider = new Button
             {
-                Text = "🎮 JOUER",
-                Location = new Point(200, 415),
-                Size = new Size(200, 50),
-                Font = new Font("Arial", 16, FontStyle.Bold),
+                Text = "🎮 NOUVELLE PARTIE",
+                Location = new Point(310, 415),
+                Size = new Size(240, 50),
+                Font = new Font("Arial", 12, FontStyle.Bold),
                 BackColor = Color.FromArgb(0, 120, 215),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -246,6 +268,32 @@ namespace pong_echec.UI
             }
             Port = port;
 
+            ChargerPartie = false;
+            this.DialogResult = DialogResult.OK;
+            this.Close();
+        }
+
+        private void BtnChargerPartie_Click(object sender, EventArgs e)
+        {
+            // Valider l'adresse IP
+            AdresseServeur = txtAdresseServeur.Text.Trim();
+            if (string.IsNullOrEmpty(AdresseServeur))
+            {
+                MessageBox.Show("Veuillez entrer une adresse serveur valide!", 
+                    "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // Valider le port
+            if (!int.TryParse(txtPort.Text, out int port) || port < 1 || port > 65535)
+            {
+                MessageBox.Show("Le port doit être entre 1 et 65535!", 
+                    "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            Port = port;
+
+            ChargerPartie = true;
             this.DialogResult = DialogResult.OK;
             this.Close();
         }
