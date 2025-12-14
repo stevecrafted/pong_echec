@@ -19,7 +19,7 @@ namespace pong_serveur.Game
             pieces = new List<PieceEchec>();
         }
 
-        public void InitialiserPieces(int nombrePiece, Dictionary<string, int> viesPersonnalisees = null)
+        public void InitialiserPieces(int nombrePiece, Dictionary<string, int> viesJoueur1 = null, Dictionary<string, int> viesJoueur2 = null)
         {
             if (nombrePiece <= 0 || nombrePiece > 8)
             {
@@ -32,11 +32,11 @@ namespace pong_serveur.Game
 
             pieces.Clear();
 
-            AjouterPiecesPourJoueur(1, nombrePiece, 10, 10, viesPersonnalisees);
-            AjouterPiecesPourJoueur(2, nombrePiece, 10, terrain.Height - 110, viesPersonnalisees);
+            AjouterPiecesPourJoueur(1, nombrePiece, 10, 10, viesJoueur1);
+            AjouterPiecesPourJoueur(2, nombrePiece, 10, terrain.Height - 110, viesJoueur2);
 
             Console.WriteLine($"✓ {pieces.Count} pièces initialisées ({nombrePiece} par joueur)");
-            if (viesPersonnalisees != null && viesPersonnalisees.Count > 0)
+            if ((viesJoueur1 != null && viesJoueur1.Count > 0) || (viesJoueur2 != null && viesJoueur2.Count > 0))
             {
                 Console.WriteLine("  ℹ️ Vies personnalisées appliquées depuis l'EJB");
             }

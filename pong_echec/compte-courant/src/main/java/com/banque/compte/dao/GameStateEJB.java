@@ -127,7 +127,8 @@ public class GameStateEJB {
         s.setRaquette2X(e.getRaquette2X());
         s.setRaquette2Y(e.getRaquette2Y());
 
-        s.setViesPieces(e.getViesPieces());
+        s.setViesPiecesJoueur1(e.getViesPiecesJoueur1());
+        s.setViesPiecesJoueur2(e.getViesPiecesJoueur2());
 
         return s;
     }
@@ -145,7 +146,8 @@ public class GameStateEJB {
         e.setRaquette2X(s.getRaquette2X());
         e.setRaquette2Y(s.getRaquette2Y());
 
-        e.setViesPieces(s.getViesPieces());
+        e.setViesPiecesJoueur1(s.getViesPiecesJoueur1());
+        e.setViesPiecesJoueur2(s.getViesPiecesJoueur2());
     }
 
     // ==========================
@@ -166,15 +168,26 @@ public class GameStateEJB {
         s.setRaquette2X(400);
         s.setRaquette2Y(850);
 
-        var vies = new HashMap<String, Integer>();
-        vies.put("Roi", 5);
-        vies.put("Dame", 4);
-        vies.put("Tour", 3);
-        vies.put("Fou", 3);
-        vies.put("Cavalier", 2);
-        vies.put("Pion", 1);
+        // Vies des pièces pour le joueur 1
+        var viesJoueur1 = new HashMap<String, Integer>();
+        viesJoueur1.put("Roi", 5);
+        viesJoueur1.put("Dame", 4);
+        viesJoueur1.put("Tour", 3);
+        viesJoueur1.put("Fou", 3);
+        viesJoueur1.put("Cavalier", 2);
+        viesJoueur1.put("Pion", 1);
 
-        s.setViesPieces(vies);
+        // Vies des pièces pour le joueur 2
+        var viesJoueur2 = new HashMap<String, Integer>();
+        viesJoueur2.put("Roi", 5);
+        viesJoueur2.put("Dame", 4);
+        viesJoueur2.put("Tour", 3);
+        viesJoueur2.put("Fou", 3);
+        viesJoueur2.put("Cavalier", 2);
+        viesJoueur2.put("Pion", 1);
+
+        s.setViesPiecesJoueur1(viesJoueur1);
+        s.setViesPiecesJoueur2(viesJoueur2);
         return s;
     }
 

@@ -543,7 +543,7 @@ namespace pong_serveur
             gestionnairePieces = new GestionnairePieces(terrain, pieceConfig);
             
             // Passer les vies personnalisées depuis l'EJB si disponibles
-            gestionnairePieces.InitialiserPieces(state.NombrePieces, state.ViesPieces);
+            gestionnairePieces.InitialiserPieces(state.NombrePieces, state.ViesPiecesJoueur1, state.ViesPiecesJoueur2);
             
             // 5. Restaurer l'état de la balle et des raquettes
             RestaurerEtat(state);
@@ -559,10 +559,19 @@ namespace pong_serveur
             Console.WriteLine($"  • Raquette J1    : ({raquette1X}, {raquette1Y})");
             Console.WriteLine($"  • Raquette J2    : ({raquette2X}, {raquette2Y})");
             
-            if (state.ViesPieces != null && state.ViesPieces.Count > 0)
+            if (state.ViesPiecesJoueur1 != null && state.ViesPiecesJoueur1.Count > 0)
             {
-                Console.WriteLine("  • Vies des pièces (depuis EJB):");
-                foreach (var kvp in state.ViesPieces)
+                Console.WriteLine("  • Vies des pièces Joueur 1 (depuis EJB):");
+                foreach (var kvp in state.ViesPiecesJoueur1)
+                {
+                    Console.WriteLine($"    - {kvp.Key}: {kvp.Value} PV");
+                }
+            }
+            
+            if (state.ViesPiecesJoueur2 != null && state.ViesPiecesJoueur2.Count > 0)
+            {
+                Console.WriteLine("  • Vies des pièces Joueur 2 (depuis EJB):");
+                foreach (var kvp in state.ViesPiecesJoueur2)
                 {
                     Console.WriteLine($"    - {kvp.Key}: {kvp.Value} PV");
                 }
@@ -599,14 +608,19 @@ namespace pong_serveur
         /// </summary>
         public static async Task SauvegarderEtatAsync()
         {
-            // Collecter les vies actuelles des pièces depuis pieceConfig
-            Dictionary<string, int> viesActuelles = null;
+            // Collecter les vies actuelles des pièces depuis pieceConfig pour chaque joueur
+            Dictionary<string, int> viesJoueur1 = null;
+            Dictionary<string, int> viesJoueur2 = null;
+            
             if (pieceConfig != null && pieceConfig.VieParType != null)
             {
-                viesActuelles = new Dictionary<string, int>();
+                viesJoueur1 = new Dictionary<string, int>();
+                viesJoueur2 = new Dictionary<string, int>();
+                
                 foreach (var kvp in pieceConfig.VieParType)
                 {
-                    viesActuelles[kvp.Key.ToString()] = kvp.Value;
+                    viesJoueur1[kvp.Key.ToString()] = kvp.Value;
+                    viesJoueur2[kvp.Key.ToString()] = kvp.Value;
                 }
             }
 
@@ -622,7 +636,8 @@ namespace pong_serveur
                 Raquette1Y = raquette1Y,
                 Raquette2X = raquette2X,
                 Raquette2Y = raquette2Y,
-                ViesPieces = viesActuelles
+                ViesPiecesJoueur1 = viesJoueur1,
+                ViesPiecesJoueur2 = viesJoueur2
             };
 
             await GameStateClient.SauvegarderEtatAsync(state);

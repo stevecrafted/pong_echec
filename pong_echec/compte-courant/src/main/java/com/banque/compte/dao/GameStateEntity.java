@@ -69,10 +69,15 @@ public class GameStateEntity implements Serializable {
        Vies des pièces (JSON)
        ======================= */
 
-    @JsonProperty("ViesPieces")
-    @Column(name = "vies_pieces", columnDefinition = "text")
+    @JsonProperty("ViesPiecesJoueur1")
+    @Column(name = "vies_pieces_joueur1", columnDefinition = "text")
     @Convert(converter = JsonMapConverter.class)
-    private Map<String, Integer> viesPieces;
+    private Map<String, Integer> viesPiecesJoueur1;
+
+    @JsonProperty("ViesPiecesJoueur2")
+    @Column(name = "vies_pieces_joueur2", columnDefinition = "text")
+    @Convert(converter = JsonMapConverter.class)
+    private Map<String, Integer> viesPiecesJoueur2;
 
     /* =======================
        Getters / Setters
@@ -162,11 +167,19 @@ public class GameStateEntity implements Serializable {
         this.raquette2Y = raquette2Y;
     }
 
-    public Map<String, Integer> getViesPieces() {
-        return viesPieces;
+    public Map<String, Integer> getViesPiecesJoueur1() {
+        return viesPiecesJoueur1;
     }
 
-    public void setViesPieces(Map<String, Integer> viesPieces) {
-        this.viesPieces = viesPieces;
+    public void setViesPiecesJoueur1(Map<String, Integer> viesPiecesJoueur1) {
+        this.viesPiecesJoueur1 = viesPiecesJoueur1;
+    }
+
+    public Map<String, Integer> getViesPiecesJoueur2() {
+        return viesPiecesJoueur2;
+    }
+
+    public void setViesPiecesJoueur2(Map<String, Integer> viesPiecesJoueur2) {
+        this.viesPiecesJoueur2 = viesPiecesJoueur2;
     }
 }

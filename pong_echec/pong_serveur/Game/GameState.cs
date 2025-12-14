@@ -43,10 +43,19 @@ namespace pong_serveur.Game
                 Console.WriteLine($"  • Raquette J1: ({state.Raquette1X}, {state.Raquette1Y})");
                 Console.WriteLine($"  • Raquette J2: ({state.Raquette2X}, {state.Raquette2Y})");
                 
-                if (state.ViesPieces != null && state.ViesPieces.Count > 0)
+                if (state.ViesPiecesJoueur1 != null && state.ViesPiecesJoueur1.Count > 0)
                 {
-                    Console.WriteLine("  • Vies des pièces:");
-                    foreach (var kvp in state.ViesPieces)
+                    Console.WriteLine("  • Vies des pièces Joueur 1:");
+                    foreach (var kvp in state.ViesPiecesJoueur1)
+                    {
+                        Console.WriteLine($"    - {kvp.Key}: {kvp.Value}");
+                    }
+                }
+                
+                if (state.ViesPiecesJoueur2 != null && state.ViesPiecesJoueur2.Count > 0)
+                {
+                    Console.WriteLine("  • Vies des pièces Joueur 2:");
+                    foreach (var kvp in state.ViesPiecesJoueur2)
                     {
                         Console.WriteLine($"    - {kvp.Key}: {kvp.Value}");
                     }
@@ -191,7 +200,8 @@ namespace pong_serveur.Game
         public int Raquette2X { get; set; }
         public int Raquette2Y { get; set; }
         
-        // Vies des pièces (Map<TypePiece, Vie>)
-        public Dictionary<string, int> ViesPieces { get; set; }
+        // Vies des pièces par joueur (Map<TypePiece, Vie>)
+        public Dictionary<string, int> ViesPiecesJoueur1 { get; set; }
+        public Dictionary<string, int> ViesPiecesJoueur2 { get; set; }
     }
 }
