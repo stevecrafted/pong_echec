@@ -1,6 +1,7 @@
 package com.banque.compte.dao;
 
-import jakarta.persistence.*; 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.persistence.*;
 import java.io.Serializable;
 import java.util.Map;
 
@@ -12,45 +13,75 @@ public class GameStateEntity implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Configuration
-    @Column(name = "nombre_pieces")
+    /* =======================
+       Configuration
+       ======================= */
+
+    @JsonProperty("NombrePieces")
+    @Column(name = "nombre_pieces", nullable = false)
     private int nombrePieces;
 
-    // Balle
-    @Column(name = "ball_x")
+    /* =======================
+       Balle
+       ======================= */
+
+    @JsonProperty("BallX")
+    @Column(name = "ball_x", nullable = false)
     private int ballX;
-    
-    @Column(name = "ball_y")
+
+    @JsonProperty("BallY")
+    @Column(name = "ball_y", nullable = false)
     private int ballY;
-    
-    @Column(name = "ball_speed_x")
+
+    @JsonProperty("BallSpeedX")
+    @Column(name = "ball_speed_x", nullable = false)
     private int ballSpeedX;
-    
-    @Column(name = "ball_speed_y")
+
+    @JsonProperty("BallSpeedY")
+    @Column(name = "ball_speed_y", nullable = false)
     private int ballSpeedY;
-    
-    @Column(name = "balle_lancee")
+
+    @JsonProperty("BalleLancee")
+    @Column(name = "balle_lancee", nullable = false)
     private boolean balleLancee;
 
-    // Raquettes
-    @Column(name = "raquette1_x")
+    /* =======================
+       Raquettes
+       ======================= */
+
+    @JsonProperty("Raquette1X")
+    @Column(name = "raquette1_x", nullable = false)
     private int raquette1X;
-    
-    @Column(name = "raquette1_y")
+
+    @JsonProperty("Raquette1Y")
+    @Column(name = "raquette1_y", nullable = false)
     private int raquette1Y;
-    
-    @Column(name = "raquette2_x")
+
+    @JsonProperty("Raquette2X")
+    @Column(name = "raquette2_x", nullable = false)
     private int raquette2X;
-    
-    @Column(name = "raquette2_y")
+
+    @JsonProperty("Raquette2Y")
+    @Column(name = "raquette2_y", nullable = false)
     private int raquette2Y;
 
-    // JSONB stocké comme TEXT avec conversion manuelle
+    /* =======================
+       Vies des pièces (JSON)
+       ======================= */
+
+    @JsonProperty("ViesPieces")
     @Column(name = "vies_pieces", columnDefinition = "text")
     @Convert(converter = JsonMapConverter.class)
     private Map<String, Integer> viesPieces;
 
-    // Getters et Setters
+    /* =======================
+       Getters / Setters
+       ======================= */
+
+    public Long getId() {
+        return id;
+    }
+
     public int getNombrePieces() {
         return nombrePieces;
     }
@@ -131,11 +162,11 @@ public class GameStateEntity implements Serializable {
         this.raquette2Y = raquette2Y;
     }
 
-    public java.util.Map<String, Integer> getViesPieces() {
+    public Map<String, Integer> getViesPieces() {
         return viesPieces;
     }
 
-    public void setViesPieces(java.util.Map<String, Integer> viesPieces) {
+    public void setViesPieces(Map<String, Integer> viesPieces) {
         this.viesPieces = viesPieces;
     }
 }

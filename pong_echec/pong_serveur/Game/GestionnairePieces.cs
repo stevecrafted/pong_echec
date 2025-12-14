@@ -8,7 +8,7 @@ namespace pong_serveur.Game
     {
         private List<PieceEchec> pieces;
         private Terrain terrain;
-        private PieceConfig config; 
+        private PieceConfig config;
 
         public IReadOnlyList<PieceEchec> Pieces => pieces.AsReadOnly();
 
@@ -22,7 +22,10 @@ namespace pong_serveur.Game
         public void InitialiserPieces(int nombrePiece, Dictionary<string, int> viesPersonnalisees = null)
         {
             if (nombrePiece <= 0 || nombrePiece > 8)
+            {
+                Console.WriteLine("nombrePiece : " + nombrePiece);
                 throw new ArgumentException("Le nombre de pièces doit être entre 1 et 8.");
+            }
 
             if (config.VieParType == null || config.VieParType.Count == 0)
                 throw new InvalidOperationException("La configuration des pièces n'est pas chargée.");

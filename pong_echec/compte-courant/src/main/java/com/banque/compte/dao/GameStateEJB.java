@@ -6,9 +6,10 @@ import jakarta.annotation.PostConstruct;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.HashMap; 
 import java.util.logging.Logger;
+
+// import com.banque.compte.entity.GameStateEntity;
 
 @Singleton
 @Startup
@@ -20,35 +21,33 @@ public class GameStateEJB {
     private EntityManager em;
 
     // État du jeu en mémoire (envoyé aux clients)
-    private GameState currentState;
+    private GameStateEntity currentState;
 
     // ==========================
     // INIT
     // ==========================
     @PostConstruct
     public void init() {
-        LOGGER.info("→ Initialisation GameStateEJB (chargement BDD)");
+        LOGGER.info("→ Initialisation GameStateEntityEJB (chargement BDD)");
 
         GameStateEntity entity = getFirstStateFromDB();
 
         if (entity == null) {
-            LOGGER.warning("⚠ Aucun GameState en BDD, création état par défaut");
-            currentState = createDefaultState();
-            saveToDatabase();
+            LOGGER.warning("⚠ Aucun GameStateEntity en BDD, création état par défaut");
         } else {
-            currentState = entityToGameState(entity);
-            LOGGER.info("✓ GameState chargé depuis la BDD");
+            currentState = entityToGameStateEntity(entity);
+            LOGGER.info("✓ GameStateEntity chargé depuis la BDD");
         }
     }
 
     // ==========================
     // GET / UPDATE (API EXISTANTE)
     // ==========================
-    public GameState getGameState() {
+    public GameStateEntity getGameStateEntity() {
         return currentState;
     }
 
-    public void updateGameState(GameState newState) {
+    public void updateGameStateEntity(GameStateEntity newState) {
         this.currentState = newState;
         saveToDatabase();
     }
@@ -102,10 +101,10 @@ public class GameStateEJB {
 
         if (entity == null) {
             entity = new GameStateEntity();
-            gameStateToEntity(currentState, entity);
+            gameStateEGameStateEntityToEntity(currentState, entity);
             em.persist(entity);
         } else {
-            gameStateToEntity(currentState, entity);
+            gameStateEGameStateEntityToEntity(currentState, entity);
             em.merge(entity);
         }
     }
@@ -113,8 +112,8 @@ public class GameStateEJB {
     // ==========================
     // MAPPING
     // ==========================
-    private GameState entityToGameState(GameStateEntity e) {
-        GameState s = new GameState();
+    private GameStateEntity entityToGameStateEntity(GameStateEntity e) {
+        GameStateEntity s = new GameStateEntity();
 
         s.setNombrePieces(e.getNombrePieces());
         s.setBallX(e.getBallX());
@@ -133,7 +132,7 @@ public class GameStateEJB {
         return s;
     }
 
-    private void gameStateToEntity(GameState s, GameStateEntity e) {
+    private void gameStateEGameStateEntityToEntity(GameStateEntity s, GameStateEntity e) {
         e.setNombrePieces(s.getNombrePieces());
         e.setBallX(s.getBallX());
         e.setBallY(s.getBallY());
@@ -152,8 +151,8 @@ public class GameStateEJB {
     // ==========================
     // ÉTAT PAR DÉFAUT
     // ==========================
-    private GameState createDefaultState() {
-        GameState s = new GameState();
+    private GameStateEntity createDefaultState() {
+        GameStateEntity s = new GameStateEntity();
 
         s.setNombrePieces(6);
         s.setBallX(400);
@@ -179,118 +178,5 @@ public class GameStateEJB {
         return s;
     }
 
-    // ==========================
-    // CLASSE INTERNE (INCHANGÉE)
-    // ==========================
-    public static class GameState {
-        private int nombrePieces;
-        private int ballX;
-        private int ballY;
-        private int ballSpeedX;
-        private int ballSpeedY;
-        private boolean balleLancee;
-        private int raquette1X;
-        private int raquette1Y;
-        private int raquette2X;
-        private int raquette2Y;
-        private java.util.Map<String, Integer> viesPieces;
-
-        public Map<String, Integer> getViesPiecess() {
-            return viesPieces;
-        }
-
-        public void setViesPiecess(Map<String, Integer> vie) {
-            viesPieces = vie;
-        }
-
-        // Getters et Setters
-        public int getNombrePieces() {
-            return nombrePieces;
-        }
-
-        public void setNombrePieces(int nombrePieces) {
-            this.nombrePieces = nombrePieces;
-        }
-
-        public int getBallX() {
-            return ballX;
-        }
-
-        public void setBallX(int ballX) {
-            this.ballX = ballX;
-        }
-
-        public int getBallY() {
-            return ballY;
-        }
-
-        public void setBallY(int ballY) {
-            this.ballY = ballY;
-        }
-
-        public int getBallSpeedX() {
-            return ballSpeedX;
-        }
-
-        public void setBallSpeedX(int ballSpeedX) {
-            this.ballSpeedX = ballSpeedX;
-        }
-
-        public int getBallSpeedY() {
-            return ballSpeedY;
-        }
-
-        public void setBallSpeedY(int ballSpeedY) {
-            this.ballSpeedY = ballSpeedY;
-        }
-
-        public boolean isBalleLancee() {
-            return balleLancee;
-        }
-
-        public void setBalleLancee(boolean balleLancee) {
-            this.balleLancee = balleLancee;
-        }
-
-        public int getRaquette1X() {
-            return raquette1X;
-        }
-
-        public void setRaquette1X(int raquette1X) {
-            this.raquette1X = raquette1X;
-        }
-
-        public int getRaquette1Y() {
-            return raquette1Y;
-        }
-
-        public void setRaquette1Y(int raquette1Y) {
-            this.raquette1Y = raquette1Y;
-        }
-
-        public int getRaquette2X() {
-            return raquette2X;
-        }
-
-        public void setRaquette2X(int raquette2X) {
-            this.raquette2X = raquette2X;
-        }
-
-        public int getRaquette2Y() {
-            return raquette2Y;
-        }
-
-        public void setRaquette2Y(int raquette2Y) {
-            this.raquette2Y = raquette2Y;
-        }
-
-        public java.util.Map<String, Integer> getViesPieces() {
-            return viesPieces;
-        }
-
-        public void setViesPieces(java.util.Map<String, Integer> viesPieces) {
-            this.viesPieces = viesPieces;
-        }
-         
-    }
+    
 }

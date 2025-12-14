@@ -399,8 +399,7 @@ namespace pong_serveur
 
                     if (gestionnairePieces == null)
                     {
-                        Console.WriteLine($"📋 Configuration reçue: {nombrePieces} pièces");
-                        // await ChargerEtatJeuAsync();
+                        Console.WriteLine($"📋 Configuration reçue: {nombrePieces} pièces"); 
 
                         await InitialiserJeu(nombrePieces);
 
@@ -699,22 +698,6 @@ namespace pong_serveur
 
             // Sauvegarder dans l'EJB (peut être fait moins souvent)
             // await GameStateClient.MettreAJourRaquetteAsync(joueur, x, y);
-        }
-
-        /// <summary>
-        /// Sauvegarde périodique (à appeler toutes les X secondes)
-        /// </summary>
-        public static async Task SauvegardePeriodiqueAsync()
-        {
-            try
-            {
-                await SauvegarderEtatAsync();
-                Console.WriteLine($"💾 Sauvegarde auto: {DateTime.Now:HH:mm:ss}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"⚠️ Échec sauvegarde auto: {ex.Message}");
-            }
-        }
+        } 
     }
 }

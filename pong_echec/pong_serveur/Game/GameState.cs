@@ -176,7 +176,7 @@ namespace pong_serveur.Game
     /// <summary>
     /// DTO pour l'état du jeu (correspond au JSON de l'API)
     /// </summary>
-    public class GameStateDTO
+    public class  GameStateDTO
     {
         public int NombrePieces { get; set; }
         
