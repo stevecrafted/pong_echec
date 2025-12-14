@@ -1,1 +1,2 @@
-Fix bug, mety mivoaka pr le izy, ndraindray Transparent (mety mandalo eo amle raquette, na le piece le ball) 
+netstat -ano | findstr :8080
+taskkill /PID 12345 /F
